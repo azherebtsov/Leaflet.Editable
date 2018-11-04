@@ -22,8 +22,8 @@
   <div id='map'></div>
 
 <script type="text/javascript">
-var startPoint = [43.1249, 1.254];
-var map = L.map('map', {editable: true}).setView(startPoint, 16),
+var startPoint = [50.07333304, 19.78416353];
+var map = L.map('map', {editable: true}).setView(startPoint, 6),
     tilelayer = L.tileLayer('http://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {maxZoom: 20, attribution: 'Data \u00a9 <a href="http://www.openstreetmap.org/copyright"> OpenStreetMap Contributors </a> Tiles \u00a9 HOT'}).addTo(map);
     firBorders = L.tileLayer.wms('https://gis.icao.int/ArcGIS/rest/services/FIRMSD/MapServer/export?dpi=96&bboxSR=102100&imageSR=102100&f=image',
       {
