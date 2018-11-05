@@ -93,7 +93,7 @@
     var _round = function(num, len) {
       return Math.round(num*(Math.pow(10, len)))/(Math.pow(10, len));
     };
-    
+
     // Generate popup content based on layer type
     // - Returns HTML string, or null if unknown object
     var getPopupContent = function(layer) {
@@ -106,7 +106,8 @@
           for (var i = 0; i < latlngs.length-1; i++) {
             distance += latlngs[i].distanceTo(latlngs[i+1]);
           }
-          return "Distance: "+_round(distance/1000, 2)+" km (" + L.GeometryUtil.readableDistance(distance, "nauticalMile") + ")";
+          return "Distance: "+_round(distance/1000, 2)+" km (" + L.GeometryUtil.readableDistance(distance, "nauticalMile") + ")" +
+            "<br><sub>Click to copy waypoints into clipboard</sub>";
         }
       }
       return null;
