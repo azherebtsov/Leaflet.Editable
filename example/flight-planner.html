@@ -5,8 +5,12 @@
   <meta name="viewport" content="width=device-width,height=device-height, user-scalable=no" />
   <title>Flight route builder</title>
   <link rel="stylesheet" href="https://npmcdn.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://npmcdn.com/leaflet-draw/dist/leaflet.draw.css" />
   <script src="https://npmcdn.com/leaflet/dist/leaflet.js"></script>
   <script src="https://npmcdn.com/leaflet.path.drag/src/Path.Drag.js"></script>
+  <script src="https://npmcdn.com/leaflet-geometryutil/src/leaflet.geometryutil.js"></script>
+  <script src="https://npmcdn.com/leaflet-draw/dist/leaflet.draw.js"></script>
+  <script src="https://npmcdn.com/leaflet-snap/leaflet.snap.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/azherebtsov/clipboard-copy@v2.0.2/index.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/abdmob/x2js/xml2json.min.js"></script>
   <script src="../src/Leaflet.Editable.js"></script>
@@ -22,9 +26,15 @@
   <div id='map'></div>
 
 <script type="text/javascript">
-var startPoint = [50.07333304, 19.78416353];
-var map = L.map('map', {editable: true}).setView(startPoint, 6),
-    tilelayer = L.tileLayer('http://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {maxZoom: 20, attribution: 'Data \u00a9 <a href="http://www.openstreetmap.org/copyright"> OpenStreetMap Contributors </a> Tiles \u00a9 HOT'}).addTo(map);
+
+    var startPoint = [50.07333304, 19.78416353];
+    var map = L.map('map').setView(startPoint, 6),
+
+    tilelayer = L.tileLayer('http://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+        maxZoom: 20,
+        attribution: 'Data \u00a9 <a href="http://www.openstreetmap.org/copyright"> OpenStreetMap Contributors </a> Tiles \u00a9 HOT'
+    }).addTo(map);
+
     firBorders = L.tileLayer.wms('https://gis.icao.int/ArcGIS/rest/services/FIRMSD/MapServer/export?dpi=96&bboxSR=102100&imageSR=102100&f=image',
       {
         layers: 'FIR',
@@ -53,44 +63,76 @@ var map = L.map('map', {editable: true}).setView(startPoint, 6),
       }
     }).addTo(map);
 
-    L.EditControl = L.Control.extend({
+    // FeatureGroup is to store editable layers
+    var drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
 
-        options: {
-            position: 'topleft',
-            callback: null,
-            kind: '',
-            html: ''
-        },
-
-        onAdd: function (map) {
-            var container = L.DomUtil.create('div', 'leaflet-control leaflet-bar'),
-                link = L.DomUtil.create('a', '', container);
-
-            link.href = '#';
-            link.title = 'Create a new ' + this.options.kind;
-            link.innerHTML = this.options.html;
-            L.DomEvent.on(link, 'click', L.DomEvent.stop)
-                      .on(link, 'click', function () {
-                        window.LAYER = this.options.callback.call(map.editTools, undefined, {color: "#6600CC"});
-                      }, this);
-
-            return container;
+    var drawControl = new L.Control.Draw({
+      draw : {
+        polygon: false,
+        marker: false,
+        rectangle: false,
+        circle: false,
+        circlemarker: false,
+        polyline: {
+          guideLayers: [airports],
+          shapeOptions: {
+            stroke: true,
+            color: '#6600CC',
+            weight: 4,
+            opacity: 0.7,
+            fill: false,
+            clickable: true
+          }
         }
-
+      }
     });
+    map.addControl(drawControl);
 
-    L.NewLineControl = L.EditControl.extend({
-
-        options: {
-            position: 'topleft',
-            callback: map.editTools.startPolyline,
-            kind: 'line',
-            html: '\\/\\'
+    // Truncate value based on number of decimals
+    var _round = function(num, len) {
+      return Math.round(num*(Math.pow(10, len)))/(Math.pow(10, len));
+    };
+    
+    // Generate popup content based on layer type
+    // - Returns HTML string, or null if unknown object
+    var getPopupContent = function(layer) {
+      if (layer instanceof L.Polyline) {
+        var latlngs = layer._defaultShape ? layer._defaultShape() : layer.getLatLngs(),
+          distance = 0;
+        if (latlngs.length < 2) {
+          return "Distance: N/A";
+        } else {
+          for (var i = 0; i < latlngs.length-1; i++) {
+            distance += latlngs[i].distanceTo(latlngs[i+1]);
+          }
+          return "Distance: "+_round(distance/1000, 2)+" km (" + L.GeometryUtil.readableDistance(distance, "nauticalMile") + ")";
         }
+      }
+      return null;
+    };
 
+    function resetTooltip(layer) {
+      var content = getPopupContent(layer);
+      if (content !== null) {
+        layer.bindTooltip(content);
+      }
+      return content;
+    }
+
+    // Object created - bind popup to layer, add to feature group
+    map.on(L.Draw.Event.CREATED, function(event) {
+      var layer = event.layer;
+      resetTooltip(layer);
+      layer.editing.enable();
+      layer.on('edit', function() {
+        resetTooltip(layer);
+      });
+      layer.on('click', function() {
+        map.fire('path:clicked', layer);
+      });
+      drawnItems.addLayer(layer);
     });
-
-    map.addControl(new L.NewLineControl());
 
 </script>
 </body>

@@ -19,22 +19,12 @@
 
   L.FlightPlanner = L.Evented.extend({
 
-    onShapeCreated: function (e) {
-      e.layer.on('click', function() {
-        var wpts = waypoints(e.vertex.latlngs);
+    onPolyLineClicked: function(layer) {
+      if( layer.getLatLngs != undefined ) {
+        var wpts = waypoints(layer.getLatLngs());
         clipboardCopy(wpts);
-      });
+      }
     },
-
-    onShapeModified: function (e) {
-      var wpts = waypoints(e.vertex.latlngs);
-      clipboardCopy(wpts);
-      console.log(wpts);
-    },
-
-    onShapeDragged: function (e) {
-      // TODO: handle drag event, no direct access to latlngs
-    }
   });
 
   L.extend(L.FlightPlanner, {});
@@ -58,9 +48,7 @@
     this.whenReady(function () {
       this.flightPlanner = new this.options.flightPlannerClass(this, this.options.flightPlannerOptions);
 
-      this.on('editable:drawing:commit', this.flightPlanner.onShapeCreated);
-      this.on('editable:vertex:dragend', this.flightPlanner.onShapeModified);
-      this.on('editable:dragend', this.flightPlanner.onShapeDragged);
+      this.on('path:clicked', this.flightPlanner.onPolyLineClicked);
     });
 
   });
