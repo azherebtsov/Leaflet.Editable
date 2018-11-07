@@ -73,7 +73,6 @@
         circle: false,
         circlemarker: false,
         polyline: {
-          guideLayers: [airports],
           shapeOptions: {
             stroke: true,
             color: '#6600CC',
@@ -83,6 +82,11 @@
             clickable: true
           }
         }
+      },
+      edit: {
+        featureGroup: drawnItems,
+        remove: true,
+        edit: false
       }
     });
     map.addControl(drawControl);

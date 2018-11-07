@@ -23,6 +23,7 @@
       if( layer.getLatLngs != undefined ) {
         var wpts = waypoints(layer.getLatLngs());
         clipboardCopy(wpts);
+        window.localStorage.setItem('flight.planner.selected.waypoints', wpts);
       }
     },
   });
