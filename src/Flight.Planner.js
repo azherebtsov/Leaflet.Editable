@@ -23,13 +23,13 @@
   L.FlightPlanner = L.Evented.extend({
 
     onPolyLineClicked: function(layer) {
-      if( layer.getLatLngs != undefined ) {
+      if( layer.getLatLngs() !== undefined ) {
         var wpts = waypoints(layer.getLatLngs());
         clipboardCopy(wpts);
         window.localStorage.setItem('flight.planner.selected.waypoints', wpts);
       }
     },
-    onPathCreatedForProfile: function (layer) {
+    onPathCreatedForProfile: function (layer, _ratio) {
       if( layer.getLatLngs() !== undefined && layer.getLatLngs().length > 1 ) {
         var wpts = [];
         var map = this;
@@ -47,7 +47,7 @@
           // build profile chart
           if(point.alt === undefined) {
             if (idx !== 0 && idx < latlngs.length - 1) {
-              point.alt = CRUISE_LEVEL * ratio;
+              point.alt = CRUISE_LEVEL;
             } else {
               point.alt = 0;
             }
@@ -56,11 +56,11 @@
           if( idx > 0 ) {
             x = wpts[idx-1].lng + latlngs.length * latlngs[idx-1].distanceTo(latlngs[idx]) / distance;
           }
-          var latlng = xy(x, point.alt);
+          var latlng = xy(x, point.alt * ratio);
           wpts.push(latlng);
         });
         var profile = L.polyline(wpts).addTo(map);
-        profile.editing.enable();
+        profile.editing.disable();
 
         LEVELS.forEach(function (level) {
           // levels lines on profile map
@@ -80,7 +80,26 @@
             }
           );
         });
+
+        profile.snapediting = new L.Handler.PolylineSnap(this, profile, {
+          snapDistance: 15, // in pixels
+          snapVertices: true
+        });
+        profile.snapediting.addGuideLayer(levelBaselines);
+        profile.editing.newVertexEnabled = false;
+        profile.editing.deleteVertexEnabled = false;
+        profile.snapediting.enable();
+
+        layer.editing.ratio = ratio;
       }
+    },
+
+    onPathEditedForProfile: function (layer) {
+      this.eachLayer(function (layer) {
+        this.removeLayer(layer);
+      }, this);
+      levelBaselines = new L.FeatureGroup();
+      this.flightPlanner.onPathCreatedForProfile.call(this, layer, layer.editing.ratio);
     }
   });
 
@@ -100,7 +119,7 @@
 
   });
 
-  var levelBaselines = [];
+  var levelBaselines = new L.FeatureGroup();
 
   function addLevelBaseline(map, level, y) {
     var baseline = L.polyline([[y, -1000], [y, 1000]],
@@ -116,7 +135,7 @@
         offset: -1,
         attributes: {'font-weight': 'bold', 'font-size': '8', fill: "#BBAABB"}
       });
-    levelBaselines.push(baseline);
+    levelBaselines.addLayer(baseline);
   }
 
   L.Map.addInitHook(function () {
@@ -129,6 +148,7 @@
       } else {
         // profile map
         this.on('path:created', this.flightPlanner.onPathCreatedForProfile);
+        this.on('path:edited', this.flightPlanner.onPathEditedForProfile);
       }
     });
 

@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width,height=device-height, user-scalable=no" />
   <title>Flight route builder</title>
   <link rel="stylesheet" href="https://npmcdn.com/leaflet/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://npmcdn.com/leaflet-draw/dist/leaflet.draw.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/azherebtsov/Leaflet.draw@3d2a701e7d1db45c25cf61f739b25a40fdaa3d88/dist/leaflet.draw.css" />
   <script src="https://npmcdn.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://npmcdn.com/leaflet-geometryutil/src/leaflet.geometryutil.js"></script>
-  <script src="https://npmcdn.com/leaflet-draw/dist/leaflet.draw.js"></script>
-  <script src="https://npmcdn.com/leaflet-snap/leaflet.snap.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/azherebtsov/clipboard-copy@v2.0.2/index.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/azherebtsov/Leaflet.draw@3d2a701e7d1db45c25cf61f739b25a40fdaa3d88/dist/leaflet.draw.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/abdmob/x2js/xml2json.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/makinacorpus/Leaflet.TextPath/leaflet.textpath.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/makinacorpus/Leaflet.GeometryUtil/src/leaflet.geometryutil.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/makinacorpus/Leaflet.Snap/leaflet.snap.js"></script>
   <script src="../src/Flight.Planner.js"></script>
   <script src="https://unpkg.com/esri-leaflet/dist/esri-leaflet.js"></script>
 
@@ -51,15 +51,27 @@
         attribution: 'Data \u00a9 <a href="http://www.openstreetmap.org/copyright"> OpenStreetMap Contributors </a> Tiles \u00a9 HOT'
     }).addTo(map);
 
-    firBorders = L.tileLayer.wms('https://gis.icao.int/ArcGIS/rest/services/FIRMSD/MapServer/export?dpi=96&bboxSR=102100&imageSR=102100&f=image',
+    // NAV layers
+    var subdomains = 'abc';
+    var navLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/nav/{z}/{x}/{y}.png', {
+      subdomains: subdomains,
+      attribution: '',
+      minZoom: 5,
+      maxNativeZoom: 15
+    });
+    navLayer.addTo(map);
+    // FIR borders
+    var firBorders = L.tileLayer.wms('https://gis.icao.int/ArcGIS/rest/services/FIRMSD/MapServer/export?dpi=96&bboxSR=102100&imageSR=102100&f=image',
       {
         layers: 'FIR',
         format: 'png32',
         transparent: true,
         attribution: "ICAO",
         crs: L.CRS.EPSG3857
-      }).addTo(map);
+      });
+    firBorders.addTo(map);
 
+    // Airports
     var airports = L.esri.featureLayer({
       url: "https://services1.arcgis.com/vHnIGBHHqDR6y0CR/arcgis/rest/services/World_Airport_Locations/FeatureServer/0",
       pointToLayer: function (airportPoint, latlng) {
@@ -77,6 +89,44 @@
           "<br><small>"+airportPoint.properties.City+"<small>",
           { opacity: 0.8 }).openTooltip();
       }
+    });
+    airports.addTo(map);
+
+    // Weather layers
+    var d = new Date();
+    var cacheBypass = d.toJSON().split('T')[0] + '-' + (~~(d.getUTCHours() / 6) * 6).toFixed(0);
+    var tempLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/temperature/{z}/{x}/{y}.png?c=' + cacheBypass, {
+      subdomains: subdomains,
+      attribution: '',
+      maxNativeZoom: 10,
+      opacity: 0.7
+    });
+    var windsLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/winds/{z}/{x}/{y}.png?c=' + cacheBypass, {
+      subdomains: subdomains,
+      attribution: '',
+      maxNativeZoom: 10
+    });
+    var cloudsLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/clouds/{z}/{x}/{y}.png?c=' + cacheBypass, {
+      subdomains: subdomains,
+      attribution: '',
+      maxNativeZoom: 10
+    });
+    var precipLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/precip/{z}/{x}/{y}.png?c=' + cacheBypass, {
+      subdomains: subdomains,
+      attribution: '',
+      maxNativeZoom: 10
+    });
+
+    L.control.layers(null, {
+      "Temperature": tempLayer,
+      "Clouds": cloudsLayer,
+      "Precipitation": precipLayer,
+      "Winds": windsLayer,
+      "Nav": navLayer,
+      "FIR": firBorders,
+      "Airports": airports
+    }, {
+      collapsed: false
     }).addTo(map);
 
     // FeatureGroup is to store editable layers
