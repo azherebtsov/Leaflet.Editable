@@ -19,6 +19,7 @@
   <style type='text/css'>
       body { margin:0; padding:0; }
       #map { position:absolute; top:0; bottom:200px; right: 0; left: 0; width:100%; }
+      #currentloc { margin-bottom: 15px; }
       #profile { position:absolute; bottom:0; right: 0; left: 0; width:100%; height: 200px;
         /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#6600cc+0,62ace5+67,dbb600+89&1+0,0+89,1+100 */
         background: -moz-linear-gradient(top, rgba(102,0,204,1) 0%, rgba(98,172,229,0.25) 67%, rgba(219,182,0,0) 89%, rgba(219,182,0,1) 100%); /* FF3.6-15 */
@@ -29,7 +30,9 @@
 </style>
 </head>
 <body>
-  <div id='map'></div>
+  <div id='map'>
+    <div id='currentloc' class="leaflet-control-attribution leaflet-control leaflet-right leaflet-bottom"></div>
+  </div>
   <div id='profile'></div>
 
   <script type="text/javascript">
@@ -46,9 +49,9 @@
       ]
     }).setView([-2,-5], -5);
 
-    tilelayer = L.tileLayer('http://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+    tilelayer = L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
         maxZoom: 20,
-        attribution: 'Data \u00a9 <a href="http://www.openstreetmap.org/copyright"> OpenStreetMap Contributors </a> Tiles \u00a9 HOT'
+        attribution: 'Data \u00a9 <a href="http://www.openstreetmap.org/copyright"> OpenStreetMap Contributors </a> Tiles \u00a9 <a href="http://carto.com">CARTO</a>'
     }).addTo(map);
 
     // NAV layers
@@ -129,6 +132,19 @@
       collapsed: false
     }).addTo(map);
 
+    // Scale
+    L.control.scale().addTo(map, {
+      maxWidth: 200
+    });
+
+    // current location
+    map.on('mousemove', function(event){
+      document.getElementById("currentloc").innerHTML = _round(event.latlng.lat,3) + "&#176;:" + _round(event.latlng.lng,3) + "&#176;";
+    });
+    map.on('mouseout', function(event){
+      document.getElementById("currentloc").innerHTML = "";
+    });
+
     // FeatureGroup is to store editable layers
     var drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
@@ -176,7 +192,7 @@
           for (var i = 0; i < latlngs.length-1; i++) {
             distance += latlngs[i].distanceTo(latlngs[i+1]);
           }
-          return "Distance: "+_round(distance/1000, 2)+" km (" + L.GeometryUtil.readableDistance(distance, "nauticalMile") + ")" +
+          return "Distance: "+_round(distance/1000, 2)+" km (" + _round(distance * 0.539957 / 1000, 2) + "NM)" +
             "<br><sub>Click to copy waypoints into clipboard</sub>";
         }
       }
