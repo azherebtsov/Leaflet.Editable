@@ -7,11 +7,11 @@
   <link rel="stylesheet" href="https://npmcdn.com/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/azherebtsov/Leaflet.draw@3d2a701e7d1db45c25cf61f739b25a40fdaa3d88/dist/leaflet.draw.css" />
   <script src="https://npmcdn.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://npmcdn.com/leaflet-geometryutil/src/leaflet.geometryutil.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/azherebtsov/clipboard-copy@v2.0.2/index.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/azherebtsov/Leaflet.draw@3d2a701e7d1db45c25cf61f739b25a40fdaa3d88/dist/leaflet.draw.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/abdmob/x2js/xml2json.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/makinacorpus/Leaflet.TextPath/leaflet.textpath.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/makinacorpus/Leaflet.GeometryUtil/src/leaflet.geometryutil.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/makinacorpus/Leaflet.Snap/leaflet.snap.js"></script>
   <script src="../src/Flight.Planner.js"></script>
   <script src="https://unpkg.com/esri-leaflet/dist/esri-leaflet.js"></script>
@@ -159,7 +159,7 @@
         polyline: {
           shapeOptions: {
             stroke: true,
-            color: '#6600CC',
+            color: '#bb44bb',
             weight: 4,
             opacity: 0.7,
             fill: false,
@@ -204,6 +204,67 @@
       if (content !== null) {
         layer.bindTooltip(content);
       }
+
+      if (layer instanceof L.Polyline) {
+        var headings = layer.editing.headings || [];
+        var svg = map._renderer._container;
+        headings.forEach(function(heading) {
+          svg.removeChild(heading);
+        });
+        headings = [];
+        var latlngs = layer.getLatLngs();
+        latlngs.forEach(function(point, idx){
+          if(idx==latlngs.length - 1) {
+            return;
+          }
+
+          var next = latlngs[idx+1];
+          var headingLoc = map.latLngToContainerPoint(L.GeometryUtil.interpolateOnLine(map, [point, next], 0.2).latLng);
+
+          var distance = point.distanceTo(next);
+          var bearing = L.GeometryUtil.bearing(point, next);
+          if(bearing<0) {
+            bearing += 360;
+          }
+          var angle = L.GeometryUtil.angle(map, point, next) - 90;
+          var text = (""+Math.round(bearing)).padStart(3,'0') + "° "+_round(distance * 0.539957 / 1000, 2) +"NM";
+
+          var textNode = L.SVG.create('text'),
+              rect = L.SVG.create('rect'),
+              g = L.SVG.create('g');
+
+          textNode.appendChild(document.createTextNode(text));
+          textNode.setAttribute('font-size', '11px');
+          textNode.setAttribute('y', '4');
+
+          rect.setAttribute("width", "96px");
+          rect.setAttribute("height", "16px");
+          rect.setAttribute("fill", "white");
+          rect.setAttribute("stroke", "#bb44bb");
+          rect.setAttribute("stroke-width", "2");
+          rect.setAttribute("rx", "8");
+          rect.setAttribute("ry", "8");
+          rect.setAttribute("y", "-8");
+
+          if(angle>90) {
+            angle-=180;
+            textNode.setAttribute('x', '-93');
+            rect.setAttribute("x", "-98");
+          } else {
+            textNode.setAttribute('x', '-3');
+            rect.setAttribute("x", "-8");
+          }
+
+          g.appendChild(rect);
+          g.appendChild(textNode);
+          g.setAttribute('transform', 'translate('+headingLoc.x+' '+headingLoc.y+') rotate('+angle+')');
+          svg.appendChild(g);
+          headings.push(g);
+        });
+        layer.editing.headings = headings;
+      }
+
+
       return content;
     }
 

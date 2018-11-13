@@ -29,7 +29,7 @@
         window.localStorage.setItem('flight.planner.selected.waypoints', wpts);
       }
     },
-    onPathCreatedForProfile: function (layer, _ratio) {
+    onPathCreatedForProfile: function (layer) {
       if( layer.getLatLngs() !== undefined && layer.getLatLngs().length > 1 ) {
         var wpts = [];
         var map = this;
