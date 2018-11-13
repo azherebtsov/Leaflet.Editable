@@ -27,79 +27,105 @@
         var wpts = waypoints(layer.getLatLngs());
         clipboardCopy(wpts);
         window.localStorage.setItem('flight.planner.selected.waypoints', wpts);
+        layer._map._container.setAttribute('data', wpts);
       }
     },
-    onPathCreatedForProfile: function (layer) {
+    onPathCreatedForProfile: function (layer, reset = true) {
       if( layer.getLatLngs() !== undefined && layer.getLatLngs().length > 1 ) {
-        var wpts = [];
         var map = this;
         var height = map.getContainer().clientHeight;
         var width = map.getContainer().clientWidth;
         var latlngs = layer.getLatLngs();
-        var ratio = height * latlngs.length / (width * CRUISE_LEVEL);
 
-        var distance = 0;
-        for (var i = 0; i < latlngs.length-1; i++) {
-          distance += latlngs[i].distanceTo(latlngs[i+1]);
-        }
+        if( reset ) {
+          var ratio = height * latlngs.length / (width * CRUISE_LEVEL);
+          // Recreate everything from scratch
+          var wpts = [];
 
-        latlngs.forEach(function (point, idx) {
-          // build profile chart
-          if(point.alt === undefined) {
-            if (idx !== 0 && idx < latlngs.length - 1) {
-              point.alt = CRUISE_LEVEL;
-            } else {
-              point.alt = 0;
-            }
-          }
-          var x = idx;
-          if( idx > 0 ) {
-            x = wpts[idx-1].lng + latlngs.length * latlngs[idx-1].distanceTo(latlngs[idx]) / distance;
-          }
-          var latlng = xy(x, point.alt * ratio);
-          wpts.push(latlng);
-        });
-        var profile = L.polyline(wpts).addTo(map);
-        profile.editing.disable();
-
-        LEVELS.forEach(function (level) {
-          // levels lines on profile map
-          addLevelBaseline(map, level, level * ratio);
-        });
-
-        this.setMaxBounds([
-          [-CRUISE_LEVEL * ratio / 10, -1],
-          [CRUISE_LEVEL * ratio * 2, wpts.length+2]
-        ]);
-        this.fitBounds(profile.getBounds());
-
-        profile.on('edit', function() {
-          // set altitude value for the points on route map
           latlngs.forEach(function (point, idx) {
-              point.alt = wpts[idx].lat / ratio;
+            // build profile chart
+            if (point.alt === undefined) {
+              if (idx !== 0 && idx < latlngs.length - 1) {
+                point.alt = CRUISE_LEVEL;
+              } else {
+                point.alt = 0;
+              }
             }
-          );
-        });
+            var x = idx;
+            if (idx > 0) {
+              var distance = 0;
+              for (var i = 0; i < latlngs.length - 1; i++) {
+                distance += latlngs[i].distanceTo(latlngs[i + 1]);
+              }
+              x = wpts[idx - 1].lng + latlngs.length * latlngs[idx - 1].distanceTo(latlngs[idx]) / distance;
+            }
+            var latlng = xy(x, point.alt * ratio);
+            wpts.push(latlng);
+          });
+          var profile = L.polyline(wpts).addTo(map);
+          profile.editing.disable();
 
-        profile.snapediting = new L.Handler.PolylineSnap(this, profile, {
-          snapDistance: 15, // in pixels
-          snapVertices: true
-        });
-        profile.snapediting.addGuideLayer(levelBaselines);
-        profile.editing.newVertexEnabled = false;
-        profile.editing.deleteVertexEnabled = false;
-        profile.snapediting.enable();
+          LEVELS.forEach(function (level) {
+            // levels lines on profile map
+            addLevelBaseline(map, level, level * ratio);
+          });
 
-        layer.editing.ratio = ratio;
+          this.setMaxBounds([
+            [-CRUISE_LEVEL * ratio / 10, -1],
+            [CRUISE_LEVEL * ratio * 2, wpts.length + 2]
+          ]);
+          this.fitBounds(profile.getBounds());
+
+          profile.on('edit', function () {
+            // set altitude value for the points on route map
+            latlngs.forEach(function (point, idx) {
+                point.alt = wpts[idx].lat / ratio;
+              }
+            );
+          });
+
+          profile.snapediting = new L.Handler.PolylineSnap(this, profile, {
+            snapDistance: 15, // in pixels
+            snapVertices: true
+          });
+          profile.snapediting.addGuideLayer(levelBaselines);
+          profile.editing.newVertexEnabled = false;
+          profile.editing.deleteVertexEnabled = false;
+          profile.snapediting.enable();
+
+          this.flightPlanner.profile = profile;
+        } else {
+          // Only updates
+          var _profile = this.flightPlanner.profile;
+          var _wpts = _profile.getLatLngs();
+          latlngs.forEach(function (point, idx) {
+            var x = idx;
+            if (idx > 0) {
+              var distance = 0;
+              for (var i = 0; i < latlngs.length - 1; i++) {
+                distance += latlngs[i].distanceTo(latlngs[i + 1]);
+              }
+              x = _wpts[idx - 1].lng + latlngs.length * latlngs[idx - 1].distanceTo(latlngs[idx]) / distance;
+            }
+            _wpts[idx].lng = x;
+          });
+          _profile.snapediting.disable();
+          _profile.redraw();
+          _profile.snapediting.enable();
+        }
       }
     },
 
     onPathEditedForProfile: function (layer) {
-      this.eachLayer(function (layer) {
-        this.removeLayer(layer);
-      }, this);
-      levelBaselines = new L.FeatureGroup();
-      this.flightPlanner.onPathCreatedForProfile.call(this, layer, layer.editing.ratio);
+      var reset = this.flightPlanner.profile && this.flightPlanner.profile.getLatLngs()
+        && layer.getLatLngs() && layer.getLatLngs().length !== this.flightPlanner.profile.getLatLngs().length;
+      if( reset ) {
+        this.eachLayer(function (layer) {
+          this.removeLayer(layer);
+        }, this);
+        levelBaselines = new L.FeatureGroup();
+      }
+      this.flightPlanner.onPathCreatedForProfile.call(this, layer, reset);
     }
   });
 
@@ -158,7 +184,15 @@
   function waypoints(latlngs) {
     var x2js = new X2JS();
     var points=[];
+    var distance = 0;
+    for (var i = 0; i < latlngs.length - 1; i++) {
+      distance += latlngs[i].distanceTo(latlngs[i + 1]);
+    }
+    distance *= 0.539957 / 1000;
     latlngs.forEach(function (point, idx) {
+        distance = Math.round(distance * 1000) / 1000;
+        var gd = Math.round((idx > 0 ? latlngs[idx-1].distanceTo(point) : 0) * 0.539957) / 1000;
+        var rd = idx < latlngs.length - 1 ? Math.round((distance - gd)*1000) / 1000 : 0;
         var waypoint = {
           _sequenceId: idx + 1,
           Coordinates: {
@@ -172,9 +206,51 @@
                 __text: Math.round(point.alt)
               }
             }
+          },
+          GroundDistance: {
+            Value: {
+              _unit: "NM",
+              __text: gd
+            }
+          },
+          AirDistance: {
+            Value: {
+              _unit: "NM",
+              __text: gd
+            }
+          },
+          RemainingGroundDistance: {
+            Value: {
+              _unit: "NM",
+              __text: rd
+            }
+          },
+          RemainingAirDistance: {
+            Value: {
+              _unit: "NM",
+              __text: rd
+            }
           }
         };
+
+        if( idx < latlngs.length - 1 ) {
+          var bearing = L.GeometryUtil.bearing(point, latlngs[idx+1]);
+          if(bearing<0) {
+            bearing += 360;
+          }
+          waypoint['Track'] = {
+            OutboundTrack: {
+              Value: {
+                _type: "true",
+                  __text: bearing
+              }
+            }
+          };
+        }
+
         points.push(waypoint);
+
+        distance -= gd;
       }
     );
 
