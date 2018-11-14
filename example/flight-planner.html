@@ -372,8 +372,7 @@
         coordLabelNode(lngNode, point.lng).setAttribute('y', '22');
 
         flNode.appendChild(document.createTextNode((''+Math.round(point.alt)).padStart(3, '0')));
-        flNode.setAttribute('writing-mode','tb');
-        flNode.setAttribute('glyph-orientation-vertical','90');
+        flNode.setAttribute('transform','180');
         flNode.setAttribute('font-size', '10px');
         flNode.setAttribute('font-weight', 'bold');
         flNode.setAttribute('letter-spacing', '1');
