@@ -82,6 +82,7 @@
                 point.alt = wpts[idx].lat / ratio;
               }
             );
+            layer.fire('profile:edited', profile);
           });
 
           profile.snapediting = new L.Handler.PolylineSnap(this, profile, {
