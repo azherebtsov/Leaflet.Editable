@@ -317,7 +317,7 @@
       var latlngs = layer.getLatLngs();
 
       function coordLabelNode(node, coord) {
-        node.appendChild(document.createTextNode(latLabel(_round(coord, 2), 2).padStart(7, '0')));
+        node.appendChild(document.createTextNode(coord.padStart(7, '0')));
         node.setAttribute('font-size', '10px');
         node.setAttribute('x', '2');
         return node;
@@ -368,8 +368,8 @@
           rect = L.SVG.create('rect'),
           g = L.SVG.create('g');
 
-        coordLabelNode(latNode, point.lat).setAttribute('y', '11');
-        coordLabelNode(lngNode, point.lng).setAttribute('y', '22');
+        coordLabelNode(latNode, latLabel(_round(point.lat, 2), 2)).setAttribute('y', '11');
+        coordLabelNode(lngNode, lngLabel(_round(point.lng, 2), 2)).setAttribute('y', '22');
 
         flNode.appendChild(document.createTextNode((''+Math.round(point.alt)).padStart(3, '0')));
         flNode.setAttribute('writing-mode','tb');
