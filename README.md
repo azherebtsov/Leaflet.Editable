@@ -25,5 +25,5 @@ Design keys:
 
 Just copy sources JS into into your project, sample html in example/flight-planner.html
 
-#License
+# License
 This software is released under the WTFPL licence.
