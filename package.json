@@ -1,16 +1,14 @@
 {
-  "name": "leaflet-editable",
+  "name": "flight-planner",
   "version": "1.2.0",
-  "description": "Make geometries editable in Leaflet",
-  "main": "src/Leaflet.Editable.js",
-  "scripts": {
-    "test": "make test"
-  },
+  "description": "Make flight route planner in Leaflet",
+  "main": "src/map.js",
   "keywords": [
     "leaflet",
-    "map"
+    "map",
+    "flightplan"
   ],
-  "author": "Yohan Boniface",
+  "author": "OZ",
   "license": "WTFPL",
   "devDependencies": {
     "chai": "4.1.2",
@@ -24,10 +22,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/Leaflet/Leaflet.Editable.git"
+    "url": "git://azherebtsov.github.io/Leaflet.FlightPlanner.git"
   },
   "bugs": {
-    "url": "https://github.com/Leaflet/Leaflet.Editable/issues"
+    "url": "https://azherebtsov.github.io/Leaflet.FlightPlanner/issues"
   },
-  "homepage": "https://github.com/Leaflet/Leaflet.Editable/"
+  "homepage": "https://azherebtsov.github.io/Leaflet.FlightPlanner/"
 }

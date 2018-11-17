@@ -1,12 +1,12 @@
 {
-  "name": "leaflet.editable",
-  "version": "0.6.0",
-  "homepage": "https://github.com/Leaflet/Leaflet.Editable",
+  "name": "flight-planner",
+  "version": "1.2.0",
+  "homepage": "https://azherebtsov.github.io/Leaflet.FlightPlanner/",
   "authors": [
-    "Yohan Boniface <ybon@openstreetmap.fr>"
+    "OZ"
   ],
   "description": "Make geometries editable in Leaflet.",
-  "main": "src/Leaflet.Editable.js",
+  "main": "src/map.js",
   "keywords": [
     "leaflet"
   ],
