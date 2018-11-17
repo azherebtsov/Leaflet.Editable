@@ -2,7 +2,7 @@
 
 Visual flight route builder.
 
-##**NOT FOR PRODUCTION USE IN ANY AIRLINE OPERATIONS  ! ! !**
+##NOT FOR PRODUCTION USE IN ANY AIRLINE OPERATIONS  ! ! !
 
 This is a minimal, lightweight, and far from ready-to-use route planner. This is a kind of PoC tool to check how far you can go without backend.
 
