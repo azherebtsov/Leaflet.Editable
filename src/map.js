@@ -1,5 +1,15 @@
-var startPoint = [50.07333304, 19.78416353];
+var startPoint = [52.17333304, 20.98416353];
 
+let routeDefaultOptions = {
+  stroke: true,
+  color: '#bb44bb',
+  weight: 6,
+  opacity: 0.8,
+  fill: false,
+  clickable: true,
+  renderer: new L.Polyline.GCRenderer(),
+  gcpoly: true
+};
 
 var map = L.map('map',{
   center: startPoint,
@@ -66,6 +76,35 @@ var airports = L.esri.featureLayer({
   }
 });
 airports.addTo(map);
+
+/**
+ * Handling dep and arr URL parameters. Could be better - two codes could be handled by one request
+ */
+window.onload = function () {
+  var url = new URL(window.location.href);
+  var dep = url.searchParams.get("dep"), arr = url.searchParams.get("arr");
+  var points = [];
+  airports.query()
+    .where("ICAO = '"+dep+"'")
+    .run(function(error, featureCollection){
+      if( featureCollection.features.length > 0  ) {
+        var coords = featureCollection.features[0].geometry.coordinates;
+        points[0] = new L.LatLng(coords[1], coords[0]);
+        airports.query()
+          .where("ICAO = '"+arr+"'")
+          .run(function(error, featureCollection){
+            if( featureCollection.features.length > 0 ) {
+              var coords = featureCollection.features[0].geometry.coordinates;
+              points[3] = new L.LatLng(coords[1], coords[0]);
+              points[1] = points[0].intermediatePointTo(points[3], 0.1);
+              points[2] = points[0].intermediatePointTo(points[3], 0.9);
+              modifyPolyToRoute(new L.Polyline(points, routeDefaultOptions)).addTo(map);
+              map.fitBounds(points);
+            }
+          });
+      }
+    });
+};
 
 // Weather layers
 var d = new Date();
@@ -158,16 +197,7 @@ var drawControl = new L.Control.Draw({
     circle: false,
     circlemarker: false,
     polyline: {
-      shapeOptions: {
-        stroke: true,
-        color: '#bb44bb',
-        weight: 6,
-        opacity: 0.8,
-        fill: false,
-        clickable: true,
-        renderer: new L.Polyline.GCRenderer(),
-        gcpoly: true
-      }
+      shapeOptions: routeDefaultOptions
     }
   },
   edit: {
@@ -383,29 +413,34 @@ function resetWaypointLabels(layer) {
   layer.editing.waypointLabels = waypointLabels;
 }
 
-// Object created - bind popup to layer, add to feature group
-map.on(L.Draw.Event.CREATED, function(event) {
-  var layer = event.layer;
+function modifyPolyToRoute(layer) {
   profile.fire('path:created', layer);
   resetTooltip(layer);
   layer.editing.enable();
-  layer.on('edit', function() {
+  layer.on('edit', function () {
     resetTooltip(layer);
     profile.fire('path:edited', layer);
   });
-  layer.on('editdrag', function() {
+  layer.on('editdrag', function () {
     resetHeadings(layer);
     resetWaypointLabels(layer);
     profile.fire('path:edited', layer);
   });
-  layer.on('click', function() {
+  layer.on('click', function () {
     map.fire('path:clicked', layer);
     profile.fire('path:clicked', layer);
   });
-  layer.on('profile:edited', function(profile) {
+  layer.on('profile:edited', function (profile) {
     resetWaypointLabels(layer);
   });
   drawnItems.addLayer(layer);
+  return layer;
+}
+
+// Object created - bind popup to layer, add to feature group
+map.on(L.Draw.Event.CREATED, function(event) {
+  var layer = event.layer;
+  modifyPolyToRoute(layer);
 });
 
 map.on('zoom resize viewreset profile:edited', function() {
