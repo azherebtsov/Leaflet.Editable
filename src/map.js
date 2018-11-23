@@ -1,5 +1,6 @@
-var startPoint = [52.17333304, 20.98416353];
+let startPoint = [52.17333304, 20.98416353];
 
+const CRS_WEB_MERCATOR = 102100;
 const color = '#bb44bb';
 
 let routeDefaultOptions = {
@@ -13,11 +14,11 @@ let routeDefaultOptions = {
   gcpoly: true
 };
 
-var map = L.map('map',{
+const map = L.map('map',{
   center: startPoint,
   zoom: 6
 });
-var profile = L.map('profile', {
+const profile = L.map('profile', {
   crs: L.CRS.Simple,
   profile: true,
   minZoom: -5,
@@ -27,7 +28,7 @@ var profile = L.map('profile', {
   ]
 }).setView([-2,-5], -5);
 
-var showCoord = L.control.coordinates({
+let showCoord = L.control.coordinates({
   position:"bottomleft",
   useDMS:true,
   useLatLngOrder:true
@@ -39,8 +40,8 @@ tilelayer = L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/ligh
   }).addTo(map);
 
 // NAV layers
-var subdomains = 'abc';
-var navLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/nav/{z}/{x}/{y}.png', {
+let subdomains = 'abc';
+let navLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/nav/{z}/{x}/{y}.png', {
   subdomains: subdomains,
   attribution: '',
   minZoom: 5,
@@ -48,7 +49,7 @@ var navLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/nav/{z}/
 });
 navLayer.addTo(map);
 // FIR borders
-var firBorders = L.tileLayer.wms('https://gis.icao.int/ArcGIS/rest/services/FIRMSD/MapServer/export?dpi=96&bboxSR=102100&imageSR=102100&f=image',
+let firBorders = L.tileLayer.wms('https://gis.icao.int/ArcGIS/rest/services/FIRMSD/MapServer/export?dpi=96&bboxSR=102100&imageSR=102100&f=image',
   {
     layers: 'FIR',
     format: 'png32',
@@ -59,7 +60,7 @@ var firBorders = L.tileLayer.wms('https://gis.icao.int/ArcGIS/rest/services/FIRM
 firBorders.addTo(map);
 
 // Airports
-var airports = L.esri.featureLayer({
+let airports = L.esri.featureLayer({
   url: "https://services1.arcgis.com/vHnIGBHHqDR6y0CR/arcgis/rest/services/World_Airport_Locations/FeatureServer/0",
   pointToLayer: function (airportPoint, latlng) {
     return L.circleMarker(latlng,
@@ -83,16 +84,16 @@ airports.addTo(map);
  * Handling dep and arr URL parameters. Could be better - two codes could be handled by one request
  */
 window.onload = function () {
-  var url = new URL(window.location.href);
-  var dep = url.searchParams.get("dep"), arr = url.searchParams.get("arr");
-  var points = [];
-  var where = "ICAO IN ('"+dep+"', '"+arr+"')";
+  let url = new URL(window.location.href);
+  let dep = url.searchParams.get("dep"), arr = url.searchParams.get("arr");
+  let points = [];
+  let where = "ICAO IN ('"+dep+"', '"+arr+"')";
   //airports.setWhere(where);
   airports.query()
     .where(where)
     .run(function(error, featureCollection){
       if( featureCollection.features.length > 0  ) {
-        var coords_0 = featureCollection.features[0].geometry.coordinates,
+        let coords_0 = featureCollection.features[0].geometry.coordinates,
           coords_1 = featureCollection.features[1].geometry.coordinates;
         points[0] = new L.LatLng(coords_0[1], coords_0[0]);
         points[3] = new L.LatLng(coords_1[1], coords_1[0]);
@@ -105,63 +106,29 @@ window.onload = function () {
     });
 };
 
-resetBuffer = debounce(function (route) {
-  try {
-    var newBuffer = buffer(route.getLatLngs(), corridorWidthControl.noUiSlider.get());
-    var newMapObjects = [];
-    newBuffer.forEach(function (geom) {
-      newMapObjects.push(geom.addTo(map));
-    });
-    route.editing.corridor.forEach(function (geom) {
-      map.removeLayer(geom);
-    });
-    route.editing.corridor = newMapObjects;
-  } catch (e) {
-    console.log("Error while buffering " + e);
-  }
-}, 300);
-
-buffer = function (poly, radius){};
+var buffer = function (poly, radius, onSuccess){};
 
 require([
-  "esri/Color",
-  "esri/geometry/Polyline",
-  "dojo/_base/array",
-  "esri/arcgis/utils",
-  "esri/config",
-  "esri/graphicsUtils",
-  "esri/symbols/SimpleFillSymbol",
-  "esri/graphic",
-  "esri/geometry/geometryEngine",
   "esri/geometry/webMercatorUtils",
   "dojo/domReady!"
 ], function(
-  Color,
-  Polyline,
-  array,
-  arcgisUtils,
-  config,
-  graphicsUtils,
-  SimpleFillSymbol,
-  Graphic,
-  geometryEngine,
   webMercatorUtils
 ) {
 
-  function bufferImpl(latlngs, radius = 250){
+  function bufferImpl(latlngs, radius = 250, onSuccess){
     //Pull first layer from the webmap and use it as input for the buffer operation
     //Use GeometryEngine geodesicBuffer
     //buffers will have correct distance no matter what the spatial reference of the map is.
 
-    var ring=[], points=[];
+    let ring=[], points=[];
     latlngs.forEach(function(point, idx){
       ring.push([point.lat, point.lng]);
       if( idx < latlngs.length - 1 ) {
-        var next = latlngs[idx+1], ip;
-        for(var i=0;i<1;i+=0.1) {
+        let next = latlngs[idx+1], ip;
+        for(let i=0;i<1;i+=0.1) {
           ip = point.intermediatePointTo(next, i);
-          var p = [ip.lat, ip.lng];
-          var m = webMercatorUtils.lngLatToXY(ip.lng, ip.lat);
+          let p = [ip.lat, ip.lng];
+          let m = webMercatorUtils.lngLatToXY(ip.lng, ip.lat);
           ring.push(p);
           points.push(//{
             [m[0], m[1]]
@@ -170,63 +137,88 @@ require([
       }
     });
 
-    var polylineJson = {
+    let polylineJson = {
        "paths":[points],
-       "spatialReference":{"wkid":102100}
+       "spatialReference":{"wkid": CRS_WEB_MERCATOR}
     };
 
-    var polyline = new Polyline(polylineJson);
+    let xhr = new XMLHttpRequest();
+    let requestURL = 'https://utility.arcgisonline.com/ArcGIS/rest/services/Geometry/GeometryServer/buffer';
+    let params = {
+      f: "json",
+      unit: 9093,
+      unionResults: false,
+      geodesic: true,
+      geometries: JSON.stringify({"geometryType":"esriGeometryPolyline","geometries":[polylineJson]}),
+      inSR: CRS_WEB_MERCATOR,
+      distances: [radius],
+      outSR: CRS_WEB_MERCATOR,
+      bufferSR: CRS_WEB_MERCATOR
+    };
 
-    //geodesicBuffer(geometries, [distance], unit, unionResults);
-    var bufferedGeometries = geometryEngine.geodesicBuffer([polyline], [radius], "nautical-miles", true);
+    xhr.open('GET', requestURL + this._formatParams(params), true );
+    // Specify the http content-type as json
+    xhr.setRequestHeader('Accept', '*/*');
 
-    var buffers = [];
-    array.forEach(bufferedGeometries,function(geometry){
-      //map.graphics.add(new Graphic(geometry,symbol));
-      //console.log(geometry);
+    // Response handlers
+    let buffers = [];
+    xhr.onload = function() {
+      let responseText = xhr.responseText;
+      let response = JSON.parse(responseText);
 
-      var points=[];
-      geometry.rings[0].forEach(function (point) {
-        var m = webMercatorUtils.xyToLngLat(point[0], point[1]);
-        points.push([m[1], m[0]]);
+      let points=[];
+      let rings = response.geometries[0].rings;
+      rings.forEach(function(ring){
+        let _points = [];
+        ring.forEach(function (point) {
+          let m = webMercatorUtils.xyToLngLat(point[0], point[1]);
+          _points.push([m[1], m[0]]);
+        });
+        points.push(_points);
       });
 
-      buffers.push(new L.Polyline(points,
+      buffers.push(new L.polygon(points,
         {
           stroke: true,
-          color: "#bb44bb",
+          color: color,
           weight: 2,
           opacity: 0.9,
           fill: false,
           clickable: false
         }));
-    });
-    return buffers;
+
+      onSuccess(buffers);
+    };
+
+    xhr.onerror = function() {
+      console.log('There was an error!');
+    };
+    xhr.send();
   }
 
   window.buffer = bufferImpl;
 });
 
 // Weather layers
-var d = new Date();
-var cacheBypass = d.toJSON().split('T')[0] + '-' + (~~(d.getUTCHours() / 6) * 6).toFixed(0);
-var tempLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/temperature/{z}/{x}/{y}.png?c=' + cacheBypass, {
+const d = new Date();
+let cacheBypass = d.toJSON().split('T')[0] + '-' + (~~(d.getUTCHours() / 6) * 6).toFixed(0);
+let tempLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/temperature/{z}/{x}/{y}.png?c=' + cacheBypass, {
   subdomains: subdomains,
   attribution: '',
   maxNativeZoom: 10,
   opacity: 0.7
 });
-var windsLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/winds/{z}/{x}/{y}.png?c=' + cacheBypass, {
+let windsLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/winds/{z}/{x}/{y}.png?c=' + cacheBypass, {
   subdomains: subdomains,
   attribution: '',
   maxNativeZoom: 10
 });
-var cloudsLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/clouds/{z}/{x}/{y}.png?c=' + cacheBypass, {
+let cloudsLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/clouds/{z}/{x}/{y}.png?c=' + cacheBypass, {
   subdomains: subdomains,
   attribution: '',
   maxNativeZoom: 10
 });
-var precipLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/precip/{z}/{x}/{y}.png?c=' + cacheBypass, {
+let precipLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/precip/{z}/{x}/{y}.png?c=' + cacheBypass, {
   subdomains: subdomains,
   attribution: '',
   maxNativeZoom: 10
@@ -249,12 +241,12 @@ L.control.scale().addTo(map, {
   maxWidth: 200
 });
 
-var corridorWidthControl = new L.Control.Slider().addTo(map);
+let corridorWidthControl = new L.Control.Slider().addTo(map);
 
 function ensurePrecision(val, precision) {
-  var str = '' + val;
+  let str = '' + val;
   if (precision > 0) {
-    var pointIdx = str.indexOf('.');
+    let pointIdx = str.indexOf('.');
     if (pointIdx > 0) {
       str = str.padEnd(precision - (str.length - pointIdx) + 1, '0');
     } else {
@@ -265,18 +257,18 @@ function ensurePrecision(val, precision) {
 }
 
 function latLabel(lat, precision = 0, NW = true) {
-  var latStr = ensurePrecision( NW ? Math.abs(lat) : lat, precision);
+  let latStr = ensurePrecision( NW ? Math.abs(lat) : lat, precision);
   return latStr + (NW?(lat < 0 ? "S" : "N") : "°");
 }
 
 function lngLabel(lng, precision = 0, NW = true) {
-  var lngStr = ensurePrecision(NW ? Math.abs(lng) : lng, precision);
+  let lngStr = ensurePrecision(NW ? Math.abs(lng) : lng, precision);
   return lngStr + (NW?(lng < 0 ? "W" : "E") : "°");
 }
 
 function pointLatLngLabel(point, precision = 3, NW = true) {
-  var lat = latLabel(_round(point.lat, precision), NW);
-  var lng = lngLabel(_round(point.lng, precision), NW);
+  let lat = latLabel(_round(point.lat, precision), NW);
+  let lng = lngLabel(_round(point.lng, precision), NW);
   return lat +(NW?"":":")+ lng;
 }
 
@@ -284,15 +276,15 @@ function pointLatLngLabel(point, precision = 3, NW = true) {
 map.on('mousemove', function(event){
   document.getElementById("currentloc").innerHTML = pointLatLngLabel(event.latlng);
 });
-map.on('mouseout', function(event){
+map.on('mouseout', function(){
   document.getElementById("currentloc").innerHTML = "";
 });
 
 // FeatureGroup is to store editable layers
-var drawnItems = new L.FeatureGroup();
+let drawnItems = new L.FeatureGroup();
 map.addLayer(drawnItems);
 
-var drawControl = new L.Control.Draw({
+const drawControl = new L.Control.Draw({
   draw : {
     polygon: false,
     marker: false,
@@ -312,20 +304,20 @@ var drawControl = new L.Control.Draw({
 map.addControl(drawControl);
 
 // Truncate value based on number of decimals
-var _round = function(num, len) {
+let _round = function(num, len) {
   return Math.round(num*(Math.pow(10, len)))/(Math.pow(10, len));
 };
 
 // Generate popup content based on layer type
 // - Returns HTML string, or null if unknown object
-var getPopupContent = function(layer) {
+let getPopupContent = function(layer) {
   if (layer instanceof L.Polyline) {
-    var latlngs = layer._defaultShape ? layer._defaultShape() : layer.getLatLngs(),
+    let latlngs = layer._defaultShape ? layer._defaultShape() : layer.getLatLngs(),
       distance = 0;
     if (latlngs.length < 2) {
       return "Distance: N/A";
     } else {
-      for (var i = 0; i < latlngs.length-1; i++) {
+      for (let i = 0; i < latlngs.length-1; i++) {
         distance += latlngs[i].distanceTo(latlngs[i+1]);
       }
       return "Distance: "+_round(distance/1000, 2)+" km (" + _round(distance * 0.539957 / 1000, 2) + "NM)" +
@@ -336,7 +328,7 @@ var getPopupContent = function(layer) {
 };
 
 function resetTooltip(layer) {
-  var content = getPopupContent(layer);
+  let content = getPopupContent(layer);
   if (content !== null) {
     layer.bindTooltip(content);
   }
@@ -350,37 +342,37 @@ function resetTooltip(layer) {
 }
 
 function resetHeadings(layer) {
-  var headings = layer.editing.headings || [];
-  var svg = map._renderer._container;
+  let headings = layer.editing.headings || [];
+  let svg = map._renderer._container;
   headings.forEach(function(heading) {
     svg.removeChild(heading);
   });
   headings = [];
-  var latlngs = layer.getLatLngs();
+  let latlngs = layer.getLatLngs();
   latlngs.forEach(function(point, idx){
     if(idx===latlngs.length - 1) {
       return;
     }
 
-    var next = latlngs[idx+1];
-    var currPnt = map.latLngToLayerPoint(point), nextPnt = map.latLngToLayerPoint(next);
+    let next = latlngs[idx+1];
+    let currPnt = map.latLngToLayerPoint(point), nextPnt = map.latLngToLayerPoint(next);
     if( currPnt.distanceTo(nextPnt) < 120 ) {
       // points to close one to each other with current zoom, skip to next iteration
       return;
     }
 
-    var headingLoc = point.intermediatePointTo(next, 0.2);
-    var headingLocAngleAnchor = point.intermediatePointTo(next, 0.275);
+    let headingLoc = point.intermediatePointTo(next, 0.2);
+    let headingLocAngleAnchor = point.intermediatePointTo(next, 0.275);
 
-    var distance = point.distanceTo(next);
-    var bearing = L.GeometryUtil.bearing(point, next);
+    let distance = point.distanceTo(next);
+    let bearing = L.GeometryUtil.bearing(point, next);
     if(bearing<0) {
       bearing += 360;
     }
-    var angle = L.GeometryUtil.angle(map, headingLoc, headingLocAngleAnchor) - 90;
-    var text = (""+Math.round(bearing)).padStart(3,'0') + "° "+_round(distance * 0.539957 / 1000, 2) +"NM";
+    let angle = L.GeometryUtil.angle(map, headingLoc, headingLocAngleAnchor) - 90;
+    let text = (""+Math.round(bearing)).padStart(3,'0') + "° "+_round(distance * 0.539957 / 1000, 2) +"NM";
 
-    var textNode = L.SVG.create('text'),
+    let textNode = L.SVG.create('text'),
       rect = L.SVG.create('rect'),
       g = L.SVG.create('g');
 
@@ -417,13 +409,13 @@ function resetHeadings(layer) {
 }
 
 function resetWaypointLabels(layer) {
-  var waypointLabels = layer.editing.waypointLabels || [];
-  var svg = map._renderer._container;
+  let waypointLabels = layer.editing.waypointLabels || [];
+  let svg = map._renderer._container;
   waypointLabels.forEach(function(label) {
     svg.removeChild(label);
   });
   waypointLabels = [];
-  var latlngs = layer.getLatLngs();
+  let latlngs = layer.getLatLngs();
 
   function coordLabelNode(node, coord) {
     node.appendChild(document.createTextNode(coord.padStart(7, '0')));
@@ -433,23 +425,23 @@ function resetWaypointLabels(layer) {
   }
 
   latlngs.forEach(function(point, idx){
-    var currPnt = map.latLngToLayerPoint(point);
+    let currPnt = map.latLngToLayerPoint(point);
     currPnt.y -= 36;
 
     // rotate point where label will be placed in order to place it "outside" of the route turns
     if( idx < latlngs.length - 1 ) {
-      var next = latlngs[idx+1];
-      var nb = L.GeometryUtil.bearing(point, next);
+      let next = latlngs[idx+1];
+      let nb = L.GeometryUtil.bearing(point, next);
       if( nb < 0) {
         nb += 360;
       }
       if( idx > 0 ) {
-        var pb = L.GeometryUtil.bearing(point, latlngs[idx-1]);
+        let pb = L.GeometryUtil.bearing(point, latlngs[idx-1]);
         if( pb < 0) {
           pb += 360;
         }
-        var bearing;
-        var bd = nb - pb;
+        let bearing;
+        let bd = nb - pb;
         if( bd < 0 ) {
           bearing = bd >- 180 ? nb - (360 + bd) / 2 : nb - bd / 2;
         } else {
@@ -463,14 +455,14 @@ function resetWaypointLabels(layer) {
       }
     } else {
       // route end
-      var _pb = L.GeometryUtil.bearing(point, latlngs[idx-1]);
+      let _pb = L.GeometryUtil.bearing(point, latlngs[idx-1]);
       if( _pb < 0) {
         _pb += 360;
       }
       currPnt = map.latLngToLayerPoint(L.GeometryUtil.rotatePoint(map, map.layerPointToLatLng(currPnt), _pb - 180, point));
     }
 
-    var textNode = L.SVG.create('text'),
+    let textNode = L.SVG.create('text'),
       latNode = L.SVG.create('tspan'),
       lngNode = L.SVG.create('tspan'),
       flNode = L.SVG.create('tspan'),
@@ -524,6 +516,7 @@ function modifyPolyToRoute(layer) {
   layer.on('edit', function () {
     resetTooltip(layer);
     profile.fire('path:edited', layer);
+    resetBuffer(layer);
   });
   layer.on('editdrag', function () {
     resetHeadings(layer);
@@ -535,7 +528,7 @@ function modifyPolyToRoute(layer) {
     map.fire('path:clicked', layer);
     profile.fire('path:clicked', layer);
   });
-  layer.on('profile:edited', function (profile) {
+  layer.on('profile:edited', function () {
     resetWaypointLabels(layer);
   });
   drawnItems.addLayer(layer);
@@ -543,21 +536,38 @@ function modifyPolyToRoute(layer) {
 }
 
 function addRouteCorridor(route) {
-  var corridorGeoms = buffer(route.getLatLngs(), corridorWidthControl.noUiSlider.get());
-  var corridorMapObjects = [];
-  corridorGeoms.forEach(function(geom){
-    corridorMapObjects.push(geom.addTo(map));
-  });
-  route.editing.corridor = corridorMapObjects;
-  corridorWidthControl.noUiSlider.on('set', function() {
-    resetBuffer(route);
+  buffer(route.getLatLngs(), corridorWidthControl.noUiSlider.get(), function (corridorGeoms) {
+    let corridorMapObjects = [];
+    corridorGeoms.forEach(function(geom){
+      corridorMapObjects.push(geom.addTo(map));
+    });
+    route.editing.corridor = corridorMapObjects;
+    corridorWidthControl.noUiSlider.on('set', function() {
+      resetBuffer(route);
+    });
   });
 }
 
+resetBuffer = debounce(function (route) {
+  try {
+    buffer(route.getLatLngs(), corridorWidthControl.noUiSlider.get(), function(newBuffer){
+      let newMapObjects = [];
+      newBuffer.forEach(function (geom) {
+        newMapObjects.push(geom.addTo(map));
+      });
+      route.editing.corridor.forEach(function (geom) {
+        map.removeLayer(geom);
+      });
+      route.editing.corridor = newMapObjects;
+    });
+  } catch (e) {
+    console.log("Error while buffering " + e);
+  }
+}, 100);
+
 // Object created - bind popup to layer, add to feature group
 map.on(L.Draw.Event.CREATED, function(event) {
-  var layer = event.layer;
-  modifyPolyToRoute(layer);
+  modifyPolyToRoute(event.layer);
 });
 
 map.on('zoom resize viewreset profile:edited', function() {
@@ -574,16 +584,25 @@ map.on('zoom resize viewreset profile:edited', function() {
 // N milliseconds. If `immediate` is passed, trigger the function on the
 // leading edge, instead of the trailing.
 function debounce(func, wait, immediate) {
-  var timeout;
+  let timeout;
   return function() {
-    var context = this, args = arguments;
-    var later = function() {
+    let context = this, args = arguments;
+    let later = function() {
       timeout = null;
       if (!immediate) func.apply(context, args);
     };
-    var callNow = immediate && !timeout;
+    let callNow = immediate && !timeout;
     clearTimeout(timeout);
     timeout = setTimeout(later, wait);
     if (callNow) func.apply(context, args);
   };
-};
+}
+
+function _formatParams( params ){
+  return "?" + Object
+    .keys(params)
+    .map(function(key){
+      return key+"="+encodeURIComponent(params[key])
+    })
+    .join("&")
+}
