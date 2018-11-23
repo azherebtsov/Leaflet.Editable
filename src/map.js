@@ -1,8 +1,10 @@
 var startPoint = [52.17333304, 20.98416353];
 
+const color = '#bb44bb';
+
 let routeDefaultOptions = {
   stroke: true,
-  color: '#bb44bb',
+  color: color,
   weight: 6,
   opacity: 0.8,
   fill: false,
@@ -84,27 +86,126 @@ window.onload = function () {
   var url = new URL(window.location.href);
   var dep = url.searchParams.get("dep"), arr = url.searchParams.get("arr");
   var points = [];
+  var where = "ICAO IN ('"+dep+"', '"+arr+"')";
+  //airports.setWhere(where);
   airports.query()
-    .where("ICAO = '"+dep+"'")
+    .where(where)
     .run(function(error, featureCollection){
       if( featureCollection.features.length > 0  ) {
-        var coords = featureCollection.features[0].geometry.coordinates;
-        points[0] = new L.LatLng(coords[1], coords[0]);
-        airports.query()
-          .where("ICAO = '"+arr+"'")
-          .run(function(error, featureCollection){
-            if( featureCollection.features.length > 0 ) {
-              var coords = featureCollection.features[0].geometry.coordinates;
-              points[3] = new L.LatLng(coords[1], coords[0]);
-              points[1] = points[0].intermediatePointTo(points[3], 0.1);
-              points[2] = points[0].intermediatePointTo(points[3], 0.9);
-              modifyPolyToRoute(new L.Polyline(points, routeDefaultOptions)).addTo(map);
-              map.fitBounds(points);
-            }
-          });
+        var coords_0 = featureCollection.features[0].geometry.coordinates,
+          coords_1 = featureCollection.features[1].geometry.coordinates;
+        points[0] = new L.LatLng(coords_0[1], coords_0[0]);
+        points[3] = new L.LatLng(coords_1[1], coords_1[0]);
+        points[1] = points[0].intermediatePointTo(points[3], 0.1);
+        points[2] = points[0].intermediatePointTo(points[3], 0.9);
+        let route = new L.Polyline(points, routeDefaultOptions);
+        modifyPolyToRoute(route).addTo(map);
+        map.fitBounds(points);
       }
     });
 };
+
+resetBuffer = debounce(function (route) {
+  try {
+    var newBuffer = buffer(route.getLatLngs(), corridorWidthControl.noUiSlider.get());
+    var newMapObjects = [];
+    newBuffer.forEach(function (geom) {
+      newMapObjects.push(geom.addTo(map));
+    });
+    route.editing.corridor.forEach(function (geom) {
+      map.removeLayer(geom);
+    });
+    route.editing.corridor = newMapObjects;
+  } catch (e) {
+    console.log("Error while buffering " + e);
+  }
+}, 300);
+
+buffer = function (poly, radius){};
+
+require([
+  "esri/Color",
+  "esri/geometry/Polyline",
+  "dojo/_base/array",
+  "esri/arcgis/utils",
+  "esri/config",
+  "esri/graphicsUtils",
+  "esri/symbols/SimpleFillSymbol",
+  "esri/graphic",
+  "esri/geometry/geometryEngine",
+  "esri/geometry/webMercatorUtils",
+  "dojo/domReady!"
+], function(
+  Color,
+  Polyline,
+  array,
+  arcgisUtils,
+  config,
+  graphicsUtils,
+  SimpleFillSymbol,
+  Graphic,
+  geometryEngine,
+  webMercatorUtils
+) {
+
+  function bufferImpl(latlngs, radius = 250){
+    //Pull first layer from the webmap and use it as input for the buffer operation
+    //Use GeometryEngine geodesicBuffer
+    //buffers will have correct distance no matter what the spatial reference of the map is.
+
+    var ring=[], points=[];
+    latlngs.forEach(function(point, idx){
+      ring.push([point.lat, point.lng]);
+      if( idx < latlngs.length - 1 ) {
+        var next = latlngs[idx+1], ip;
+        for(var i=0;i<1;i+=0.1) {
+          ip = point.intermediatePointTo(next, i);
+          var p = [ip.lat, ip.lng];
+          var m = webMercatorUtils.lngLatToXY(ip.lng, ip.lat);
+          ring.push(p);
+          points.push(//{
+            [m[0], m[1]]
+          );
+        }
+      }
+    });
+
+    var polylineJson = {
+       "paths":[points],
+       "spatialReference":{"wkid":102100}
+    };
+
+    var polyline = new Polyline(polylineJson);
+
+    //geodesicBuffer(geometries, [distance], unit, unionResults);
+    var bufferedGeometries = geometryEngine.geodesicBuffer([polyline], [radius], "nautical-miles", true);
+
+    var buffers = [];
+    array.forEach(bufferedGeometries,function(geometry){
+      //map.graphics.add(new Graphic(geometry,symbol));
+      //console.log(geometry);
+
+      var points=[];
+      geometry.rings[0].forEach(function (point) {
+        var m = webMercatorUtils.xyToLngLat(point[0], point[1]);
+        points.push([m[1], m[0]]);
+      });
+
+      buffers.push(new L.Polyline(points,
+        {
+          stroke: true,
+          color: "#bb44bb",
+          weight: 2,
+          opacity: 0.9,
+          fill: false,
+          clickable: false
+        }));
+    });
+    return buffers;
+  }
+
+  window.buffer = bufferImpl;
+});
 
 // Weather layers
 var d = new Date();
@@ -147,6 +248,8 @@ L.control.layers(null, {
 L.control.scale().addTo(map, {
   maxWidth: 200
 });
+
+var corridorWidthControl = new L.Control.Slider().addTo(map);
 
 function ensurePrecision(val, precision) {
   var str = '' + val;
@@ -288,7 +391,7 @@ function resetHeadings(layer) {
     rect.setAttribute("width", "96px");
     rect.setAttribute("height", "16px");
     rect.setAttribute("fill", "white");
-    rect.setAttribute("stroke", "#bb44bb");
+    rect.setAttribute("stroke", color);
     rect.setAttribute("stroke-width", "2");
     rect.setAttribute("rx", "8");
     rect.setAttribute("ry", "8");
@@ -396,7 +499,7 @@ function resetWaypointLabels(layer) {
     rect.setAttribute("width", "55px");
     rect.setAttribute("height", "26px");
     rect.setAttribute("fill", "white");
-    rect.setAttribute("stroke", "#bb44bb");
+    rect.setAttribute("stroke", color);
     rect.setAttribute("stroke-width", "2");
     rect.setAttribute("rx", "4");
     rect.setAttribute("ry", "4");
@@ -417,6 +520,7 @@ function modifyPolyToRoute(layer) {
   profile.fire('path:created', layer);
   resetTooltip(layer);
   layer.editing.enable();
+  addRouteCorridor(layer);
   layer.on('edit', function () {
     resetTooltip(layer);
     profile.fire('path:edited', layer);
@@ -425,6 +529,7 @@ function modifyPolyToRoute(layer) {
     resetHeadings(layer);
     resetWaypointLabels(layer);
     profile.fire('path:edited', layer);
+    resetBuffer(layer);
   });
   layer.on('click', function () {
     map.fire('path:clicked', layer);
@@ -435,6 +540,18 @@ function modifyPolyToRoute(layer) {
   });
   drawnItems.addLayer(layer);
   return layer;
+}
+
+function addRouteCorridor(route) {
+  var corridorGeoms = buffer(route.getLatLngs(), corridorWidthControl.noUiSlider.get());
+  var corridorMapObjects = [];
+  corridorGeoms.forEach(function(geom){
+    corridorMapObjects.push(geom.addTo(map));
+  });
+  route.editing.corridor = corridorMapObjects;
+  corridorWidthControl.noUiSlider.on('set', function() {
+    resetBuffer(route);
+  });
 }
 
 // Object created - bind popup to layer, add to feature group
@@ -451,3 +568,22 @@ map.on('zoom resize viewreset profile:edited', function() {
     }
   });
 });
+
+// Returns a function, that, as long as it continues to be invoked, will not
+// be triggered. The function will be called after it stops being called for
+// N milliseconds. If `immediate` is passed, trigger the function on the
+// leading edge, instead of the trailing.
+function debounce(func, wait, immediate) {
+  var timeout;
+  return function() {
+    var context = this, args = arguments;
+    var later = function() {
+      timeout = null;
+      if (!immediate) func.apply(context, args);
+    };
+    var callNow = immediate && !timeout;
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+    if (callNow) func.apply(context, args);
+  };
+};

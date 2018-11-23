@@ -234,7 +234,7 @@
           }
         };
 
-        if( idx < latlngs.length - 1 ) {
+        /*if( idx < latlngs.length - 1 ) {
           var bearing = L.GeometryUtil.bearing(point, latlngs[idx+1]);
           if(bearing<0) {
             bearing += 360;
@@ -247,7 +247,7 @@
               }
             }
           };
-        }
+        }*/
 
         points.push(waypoint);
 

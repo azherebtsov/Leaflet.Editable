@@ -4,10 +4,12 @@
   <meta charset='utf-8'>
   <meta name="viewport" content="width=device-width,height=device-height, user-scalable=no" />
   <title>Flight route builder</title>
+  <link rel="stylesheet" href="https://npmcdn.com/nouislider/distribute/nouislider.css" />
   <link rel="stylesheet" href="https://npmcdn.com/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/azherebtsov/Leaflet.draw/dist/leaflet.draw.css" />
   <link rel="stylesheet" href="https://cdn.rawgit.com/MrMufflon/Leaflet.Coordinates/master/dist/Leaflet.Coordinates-0.1.5.css" />
 
+  <script src="https://npmcdn.com/nouislider/distribute/nouislider.js"></script>
   <script src="https://npmcdn.com/leaflet/dist/leaflet.js"></script>
   <script src="https://npmcdn.com/leaflet-geometryutil/src/leaflet.geometryutil.js"></script>
 
@@ -24,6 +26,8 @@
   <script src="https://unpkg.com/esri-leaflet/dist/esri-leaflet.js"></script>
   <script src="../src/Flight.Planner.js"></script>
   <script src="../src/L.GCRenderer.js"></script>
+  <script src="https://js.arcgis.com/3.26/"></script>
+  <script src="../src/L.Slider.Control.js"></script>
 
   <style type='text/css'>
       body { margin:0; padding:0; }
@@ -36,6 +40,11 @@
         background: linear-gradient(to bottom, rgba(102,0,204,1) 0%,rgba(98,172,229,0.25) 67%,rgba(219,182,0,0) 89%,rgba(219,182,0,1) 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
         filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#6600cc', endColorstr='#dbb600',GradientType=0 ); /* IE6-9 */
       }
+
+    .slider_control {
+      height: 200px;
+      right: 50px;
+    }
 </style>
 </head>
 <body>
