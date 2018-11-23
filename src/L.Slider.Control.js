@@ -18,8 +18,9 @@ L.Control.Slider = L.Control.extend({
       step: 5,
       orientation: 'vertical',
       direction: 'rtl',
+      tooltips: true,
       range: {
-        'min': [1],
+        'min': [0],
         '60%': [500],
         '75%': [2500],
         'max': [5000],

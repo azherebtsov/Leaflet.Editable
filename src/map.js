@@ -120,6 +120,10 @@ require([
     //Use GeometryEngine geodesicBuffer
     //buffers will have correct distance no matter what the spatial reference of the map is.
 
+    if(radius < 1) {
+      onSuccess([]);
+    }
+
     let ring=[], points=[];
     latlngs.forEach(function(point, idx){
       ring.push([point.lat, point.lng]);
@@ -549,19 +553,27 @@ function addRouteCorridor(route) {
 }
 
 resetBuffer = debounce(function (route) {
-  try {
-    buffer(route.getLatLngs(), corridorWidthControl.noUiSlider.get(), function(newBuffer){
-      let newMapObjects = [];
-      newBuffer.forEach(function (geom) {
-        newMapObjects.push(geom.addTo(map));
-      });
-      route.editing.corridor.forEach(function (geom) {
-        map.removeLayer(geom);
-      });
-      route.editing.corridor = newMapObjects;
+  let radius = corridorWidthControl.noUiSlider.get();
+  if( radius < 1 ) {
+    route.editing.corridor.forEach(function (geom) {
+      map.removeLayer(geom);
     });
-  } catch (e) {
-    console.log("Error while buffering " + e);
+    route.editing.corridor = [];
+  } else {
+    try {
+      buffer(route.getLatLngs(), radius, function (newBuffer) {
+        let newMapObjects = [];
+        newBuffer.forEach(function (geom) {
+          newMapObjects.push(geom.addTo(map));
+        });
+        route.editing.corridor.forEach(function (geom) {
+          map.removeLayer(geom);
+        });
+        route.editing.corridor = newMapObjects;
+      });
+    } catch (e) {
+      console.log("Error while buffering " + e);
+    }
   }
 }, 100);
 
