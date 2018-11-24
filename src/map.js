@@ -60,10 +60,11 @@ let firBorders = L.tileLayer.wms('https://gis.icao.int/ArcGIS/rest/services/FIRM
 firBorders.addTo(map);
 
 // Airports
-let airports = L.esri.featureLayer({
+let airports = L.esri.Cluster.featureLayer({
+  showCoverageOnHover: false,
   url: "https://services1.arcgis.com/vHnIGBHHqDR6y0CR/arcgis/rest/services/World_Airport_Locations/FeatureServer/0",
   pointToLayer: function (airportPoint, latlng) {
-    return L.circleMarker(latlng,
+    let airport = L.circleMarker(latlng,
       {
         radius: 3,
         fillColor: "#ca7049",
@@ -71,11 +72,13 @@ let airports = L.esri.featureLayer({
         color: "#000",
         weight: 1
       }
-    ).bindTooltip(
+    );
+    airport.bindTooltip(
       "<h3>"+airportPoint.properties.ICAO+" "+"<span style='color:red'>"+airportPoint.properties.IATA+
       "</span></h3>"+airportPoint.properties["Airport_Name"]+
       "<br><small>"+airportPoint.properties.City+"<small>",
       { opacity: 0.8 }).openTooltip();
+    return airport;
   }
 });
 airports.addTo(map);
