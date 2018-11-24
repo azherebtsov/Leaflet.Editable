@@ -109,7 +109,7 @@ window.onload = function () {
     });
 };
 
-var buffer = function (poly, radius, onSuccess){};
+var buffer = function (poly, radius, units, onSuccess){};
 
 require([
   "esri/geometry/webMercatorUtils",
@@ -118,7 +118,7 @@ require([
   webMercatorUtils
 ) {
 
-  function bufferImpl(latlngs, radius = 250, onSuccess){
+  function bufferImpl(latlngs, radius = 250, units = 9093, onSuccess){
     //Pull first layer from the webmap and use it as input for the buffer operation
     //Use GeometryEngine geodesicBuffer
     //buffers will have correct distance no matter what the spatial reference of the map is.
@@ -153,7 +153,7 @@ require([
     let requestURL = 'https://utility.arcgisonline.com/ArcGIS/rest/services/Geometry/GeometryServer/buffer';
     let params = {
       f: "json",
-      unit: 9093,
+      unit: units,
       unionResults: false,
       geodesic: true,
       geometries: JSON.stringify({"geometryType":"esriGeometryPolyline","geometries":[polylineJson]}),
@@ -545,7 +545,7 @@ function modifyPolyToRoute(layer) {
 }
 
 function addRouteCorridor(route) {
-  buffer(route.getLatLngs(), corridorWidthControl.noUiSlider.get(), function (corridorGeoms) {
+  buffer(route.getLatLngs(), corridorWidthControl.noUiSlider.get(), corridorWidthControl.noUiSlider.units, function (corridorGeoms) {
     let corridorMapObjects = [];
     corridorGeoms.forEach(function(geom){
       corridorMapObjects.push(geom.addTo(map));
@@ -559,6 +559,7 @@ function addRouteCorridor(route) {
 
 resetBuffer = debounce(function (route) {
   let radius = corridorWidthControl.noUiSlider.get();
+  let units = corridorWidthControl.noUiSlider.units;
   if( radius < 1 ) {
     route.editing.corridor.forEach(function (geom) {
       map.removeLayer(geom);
@@ -566,7 +567,7 @@ resetBuffer = debounce(function (route) {
     route.editing.corridor = [];
   } else {
     try {
-      buffer(route.getLatLngs(), radius, function (newBuffer) {
+      buffer(route.getLatLngs(), radius, units, function (newBuffer) {
         let newMapObjects = [];
         newBuffer.forEach(function (geom) {
           newMapObjects.push(geom.addTo(map));
