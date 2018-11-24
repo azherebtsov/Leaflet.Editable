@@ -13,7 +13,7 @@ Design keys:
 
 - Uses [Leaflet](https://github.com/Leaflet/Leaflet) and some its plugins (see the code)
 - No back end (except tile providers) 
-- Layers - Airports, FIRs, Weather, NAV
+- Layers - Airports (Clustered), FIRs, Weather, NAV
 - Great circle waypoint connections
 - Editable route
 - Heading labels
@@ -21,7 +21,7 @@ Design keys:
 - Editable vertical profile
 - Path waypoints in ARINC format are copied to clipboard after click on the route
 - URL parameters "dep" and "arr" creates trivial route connecting two stations. Values must be valid ICAO airport codes (unfortunately list of codes is not current) 
-- Flight route corridors
+- Flight route corridors, width defined in NM or KM
 
 ## Install
 
