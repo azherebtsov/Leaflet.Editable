@@ -170,26 +170,28 @@ require([
       let responseText = xhr.responseText;
       let response = JSON.parse(responseText);
 
-      let points=[];
-      let rings = response.geometries[0].rings;
-      rings.forEach(function(ring){
-        let _points = [];
-        ring.forEach(function (point) {
-          let m = webMercatorUtils.xyToLngLat(point[0], point[1]);
-          _points.push([m[1], m[0]]);
+      response.geometries.forEach(function (geometry) {
+        let points=[];
+        let rings = geometry.rings;
+        rings.forEach(function(ring){
+          let _points = [];
+          ring.forEach(function (point) {
+            let m = webMercatorUtils.xyToLngLat(point[0], point[1]);
+            _points.push([m[1], m[0]]);
+          });
+          points.push(_points);
         });
-        points.push(_points);
-      });
 
-      buffers.push(new L.polygon(points,
-        {
-          stroke: true,
-          color: color,
-          weight: 2,
-          opacity: 0.9,
-          fill: false,
-          clickable: false
-        }));
+        buffers.push(new L.polygon(points,
+          {
+            stroke: true,
+            color: color,
+            weight: 2,
+            opacity: 0.9,
+            fill: false,
+            clickable: false
+          }));
+      });
 
       onSuccess(buffers);
     };
