@@ -122,6 +122,7 @@ function addSIGMETLayer(url, label) {
   req.onload = function () {
     let json = JSON.parse(req.responseText);
     let sigmetsLayer = L.geoJSON(json, {
+      attribution:'<a href="https://www.aviationweather.gov">AWC</a>',
       filter: function (feature) {
         // TODO: add checkbox set with all possible hazard types in order to show/hide SIGMETs by type
         return true;
