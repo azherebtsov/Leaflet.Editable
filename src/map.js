@@ -183,7 +183,7 @@ function addSIGMETLayer(url, label) {
 <span class="sigmet_header_filed">Hazard:</span> ${p.hazard}<br />
 <span class="sigmet_header_filed">Begins:</span> ${p.validTimeFrom}<br />
 <span class="sigmet_header_filed">Ends:</span> ${p.validTimeTo}<br />
-${p.top !== undefined ? '<span class="sigmet_header_filed">Top:</span> p.top ft<br />': ''}
+${p.top !== undefined ? `<span class="sigmet_header_filed">Top:</span> ${p.top} ft<br />`: ''}
 ${p.geom === 'UNK'
           ? '<span class="sigmet_header_filed">Region:</span> Undetermined, displaying whole FIR<br />'
           : ''
