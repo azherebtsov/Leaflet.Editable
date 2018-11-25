@@ -13,7 +13,7 @@ Design keys:
 
 - Uses [Leaflet](https://github.com/Leaflet/Leaflet) and some its plugins (see the code)
 - No back end (except tile providers) 
-- Layers - Airports (Clustered), FIRs, Weather, NAV
+- Layers - Airports (Clustered), FIRs, Weather, SIGMET, NAV
 - Great circle waypoint connections
 - Editable route
 - Heading labels

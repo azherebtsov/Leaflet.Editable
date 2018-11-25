@@ -107,6 +107,136 @@ window.onload = function () {
         map.fitBounds(points);
       }
     });
+
+  // load SIGMETs from AWC
+  // international
+  addSIGMETLayer('https://www.aviationweather.gov/cgi-bin/json/IsigmetJSON.php?type=all', 'SIGMETs INT');
+  // US
+  addSIGMETLayer('https://www.aviationweather.gov/cgi-bin/json/SigmetJSON.php?type=all', 'SIGMETs US');
+  // CWA
+  addSIGMETLayer('https://www.aviationweather.gov/cgi-bin/json/CwaJSON.php', 'SIGMETs CWA');
+};
+
+function addSIGMETLayer(url, label) {
+  var req = new XMLHttpRequest();
+  req.onload = function () {
+    let json = JSON.parse(req.responseText);
+    let sigmetsLayer = L.geoJSON(json, {
+      filter: function (feature) {
+        // TODO: add checkbox set with all possible hazard types in order to show/hide SIGMETs by type
+        return true;
+      },
+      pointToLayer: function (geoJsonPoint, latlng) {
+        return L.circleMarker(latlng, geoJsonPoint.properties.style)
+          .bindTooltip('VAA', { opacity: 0.8 }).openTooltip();
+      },
+      style: function (feature) {
+        let hazard = feature.properties.hazard;
+        var defaultStyle = {
+          color: '#F00',
+          'fill-opacity': 0.5,
+          'stroke-opacity': 1
+        };
+        var style = {};
+        if( 'TS' === hazard ) {
+          style = {
+            color: '#F88'
+          }
+        }
+        if( 'ICE' === hazard ) {
+          style = {
+            color: '#00F'
+          }
+        }
+        if( 'TURB' === hazard || 'CAT' === hazard ) {
+          style = {
+            color: 'rgb(0, 160, 96)'
+          }
+        }
+        if( 'TC' === hazard ) {
+          style = {
+            color: '#F0F'
+          }
+        }
+        if( 'MTW' === hazard ) {
+          style = {
+            color: '#0FF'
+          }
+        }
+        if( 'IFR' === hazard ) {
+          style = {
+            color: '#FF0'
+          }
+        }
+        if( 'VA' === hazard ) {
+          style = {
+            color: '#F00'
+          }
+        }
+        return L.extend(defaultStyle, style);
+      }
+    }).bindPopup(function (layer) {
+      let p = layer.feature.properties;
+      if( p.cwaText !== undefined ) { // CWA
+        return `
+<div class="sigmet_header">Center Weather Advisory</div>
+<span class="sigmet_header_filed">CWSU:</span> ${p.cwsu} [${p.name}]<br />
+<span class="sigmet_header_filed">Hazard:</span> ${p.hazard}<br />
+<span class="sigmet_header_filed">Begins:</span> ${p.validTimeFrom}<br />
+<span class="sigmet_header_filed">Ends:</span> ${p.validTimeTo}<br />
+${p.top !== undefined ? '<span class="sigmet_header_filed">Top:</span> p.top ft<br />': ''}
+${p.geom === 'UNK'
+          ? '<span class="sigmet_header_filed">Region:</span> Undetermined, displaying whole FIR<br />'
+          : ''
+          }
+<div class="sigmet_text">
+${p.cwaText}
+</div>
+`
+      } else if( p.rawSigmet !== undefined ) { // International SIGMETs
+        return `
+<div class="sigmet_header">${p.hazard} SIGMET</div>
+<span class="sigmet_header_filed">FIR Name:</span> ${p.firName}<br />
+<span class="sigmet_header_filed">Hazard:</span> ${p.hazard} - ${p.qualifier}<br />
+<span class="sigmet_header_filed">Begins:</span> ${p.validTimeFrom}<br />
+<span class="sigmet_header_filed">Ends:</span> ${p.validTimeTo}<br />
+<span class="sigmet_header_filed">Top:</span> ${p.top} ft<br />
+<span class="sigmet_header_filed">Base:</span> ${p.base} ft<br />
+${p.geom === 'UNK'
+          ? '<span class="sigmet_header_filed">Region:</span> Undetermined, displaying whole FIR<br />'
+          : ''
+          }
+<div class="sigmet_text">
+${p.rawSigmet}
+</div>
+`;
+      } else if( p.rawAirSigmet !== undefined ) { // US SIGMETs
+        return `
+<div class="sigmet_header">${p.hazard} ${p.airSigmetType}</div>
+<span class="sigmet_header_filed">Center:</span> ${p.icaoId}<br />
+<span class="sigmet_header_filed">Hazard:</span> ${p.hazard} SEV ${p.severity}<br />
+<span class="sigmet_header_filed">Begins:</span> ${p.validTimeFrom}<br />
+<span class="sigmet_header_filed">Ends:</span> ${p.validTimeTo}<br />
+<span class="sigmet_header_filed">Top:</span> ${p.altitudeHi2} ft<br />
+<span class="sigmet_header_filed">Base:</span> ${p.altitudeLow1} ft<br />
+${p.geom === 'UNK'
+          ? '<span class="sigmet_header_filed">Region:</span> Undetermined, displaying whole FIR<br />'
+          : ''
+          }
+<div class="sigmet_text">
+${p.rawAirSigmet}
+</div>
+`;
+      } else {
+        return 'UNKNOWN SIGMET'
+      }
+    });
+
+    layersControl.addOverlay(sigmetsLayer, label);
+  };
+  req.open('GET', 'https://cors.io/?'+url, true); // through CORS proxy with limited traffic
+  req.setRequestHeader('Accept', '*/*');
+  req.send();
 };
 
 var buffer = function (poly, radius, units, onSuccess){};
@@ -233,7 +363,7 @@ let precipLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/preci
   maxNativeZoom: 10
 });
 
-L.control.layers(null, {
+const layersControl = L.control.layers(null, {
   "Temperature": tempLayer,
   "Clouds": cloudsLayer,
   "Precipitation": precipLayer,
