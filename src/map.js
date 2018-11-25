@@ -127,8 +127,7 @@ function addSIGMETLayer(url, label) {
         return true;
       },
       pointToLayer: function (geoJsonPoint, latlng) {
-        return L.circleMarker(latlng, geoJsonPoint.properties.style)
-          .bindTooltip('VAA', { opacity: 0.8 }).openTooltip();
+        return L.circleMarker(latlng, geoJsonPoint.properties.style);
       },
       style: function (feature) {
         let hazard = feature.properties.hazard;
