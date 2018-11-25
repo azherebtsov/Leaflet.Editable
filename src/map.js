@@ -41,13 +41,13 @@ tilelayer = L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/ligh
 
 // NAV layers
 let subdomains = 'abc';
-let navLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/nav/{z}/{x}/{y}.png', {
+/*let navLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/nav/{z}/{x}/{y}.png', {
   subdomains: subdomains,
   attribution: '',
   minZoom: 5,
   maxNativeZoom: 15
 });
-navLayer.addTo(map);
+navLayer.addTo(map);*/
 // FIR borders
 let firBorders = L.tileLayer.wms('https://gis.icao.int/ArcGIS/rest/services/FIRMSD/MapServer/export?dpi=96&bboxSR=102100&imageSR=102100&f=image',
   {
@@ -339,7 +339,7 @@ require([
 });
 
 // Weather layers
-const d = new Date();
+/*const d = new Date();
 let cacheBypass = d.toJSON().split('T')[0] + '-' + (~~(d.getUTCHours() / 6) * 6).toFixed(0);
 let tempLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/temperature/{z}/{x}/{y}.png?c=' + cacheBypass, {
   subdomains: subdomains,
@@ -361,14 +361,14 @@ let precipLayer = L.tileLayer('https://{s}.gis.flightplandatabase.com/tile/preci
   subdomains: subdomains,
   attribution: '',
   maxNativeZoom: 10
-});
+});*/
 
 const layersControl = L.control.layers(null, {
-  "Temperature": tempLayer,
+  /*"Temperature": tempLayer,
   "Clouds": cloudsLayer,
   "Precipitation": precipLayer,
   "Winds": windsLayer,
-  "Nav": navLayer,
+  "Nav": navLayer,*/
   "FIR": firBorders,
   "Airports": airports
 }, {
