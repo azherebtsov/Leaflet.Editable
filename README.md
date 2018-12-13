@@ -23,6 +23,7 @@ Design keys:
 - Path waypoints in ARINC format are copied to clipboard after click on the route
 - URL parameters "dep" and "arr" creates trivial route connecting two stations. Values must be valid ICAO airport codes (unfortunately list of codes is not current) 
 - Flight route corridors, width defined in NM or KM
+- Route creation based on ICAO flight plan - just 'paste' flight plan in ICAO format
 
 ## Install
 

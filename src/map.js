@@ -240,7 +240,108 @@ window.onload = function () {
   addSIGMETLayer('https://www.aviationweather.gov/cgi-bin/json/SigmetJSON.php?type=all', 'SIGMETs US');
   // CWA
   addSIGMETLayer('https://www.aviationweather.gov/cgi-bin/json/CwaJSON.php', 'SIGMETs CWA');
+
+  // add 'Paste' listener
+  document.onpaste = function (evt) {
+    let items = evt.clipboardData.items;
+    for(var i=0;i<items.length;i++) {
+      var item = items[i];
+      if( item.type === 'text/plain' ) {
+        item.getAsString(function (data) {
+          parseATCFPL(data);
+        });
+      }
+    }
+  }
 };
+
+function parseATCFPL(text) {
+  let stationPattern = /\-([A-Z]{4})\d{4}[\s\S^]/g;
+  var matcher = stationPattern.exec(text);
+  let depStationIdx = matcher.index;
+  if( depStationIdx >=0 ) {
+    let depStation = matcher[1];
+    let routeStartIdx = stationPattern.lastIndex+1;
+    matcher = stationPattern.exec(text);
+    let arrStationIdx = matcher.index;
+    if( arrStationIdx >=0 ) {
+      let arrStation = matcher[1];
+      var route = text.substr(routeStartIdx, arrStationIdx - routeStartIdx);
+      route = route.replace(/[\s\S^](DCT|IFR|VFR)[\s\S^]/gi, ' '); // remove flight modes and 'DCT'
+      let routeItems = route.split(/[ ^]/g);
+      let cruising = routeItems.shift();
+      let transitionPattern = /([A-Z\d]+)\/([A-Z\d]+)/;
+      let flPattern = /F(\d{3})/;
+      var cruisingLevel = parseInt(flPattern.exec(cruising)[1], 10);
+      let routeItemsNoTransiotion = [];
+      let transitionMap = new Map();
+      routeItems.forEach(function(item){
+        if( item.length > 0 ) {
+          if (transitionPattern.test(item)) {
+            let name = transitionPattern.exec(item)[1];
+            routeItemsNoTransiotion.push(name);
+            transitionMap.set(name, transitionPattern.exec(item)[2]);
+          } else {
+            routeItemsNoTransiotion.push(item);
+          }
+        }
+      });
+      let routeString = depStation + ' ' + routeItemsNoTransiotion.join(' ') + ' ' + arrStation;
+      decodeRoute(routeString, function (json) {
+        let decodedRoute = json;
+        downloadRoute(decodedRoute.id, function(djson) {
+          let droute = djson.route;
+          if( droute !== undefined ) {
+            let points=[];
+            droute.nodes.forEach(function(point, idx){
+              let latlng = new L.LatLng(point.lat, point.lon);
+              points.push(latlng);
+              let transition = transitionMap.get(point.ident);
+              if( transition !== undefined ) {
+                let level = flPattern.exec(transition)[1];
+                if (level !== undefined) {
+                  cruisingLevel = parseInt(level, 10);
+                }
+              }
+              latlng.alt = idx > 0 && idx < droute.nodes.length - 1 ? cruisingLevel : 0;
+              latlng.ident = point.ident;
+              if( point.via !== null && point.via !== undefined) {
+                latlng.airway = point.via.ident;
+              }
+            });
+            let routeLine = new L.Polyline(points, routeDefaultOptions);
+            modifyPolyToRoute(routeLine).addTo(map);
+            map.fitBounds(points);
+          }
+        });
+      });
+    }
+  }
+}
+
+function decodeRoute(routeString, callback) {
+  var req = new XMLHttpRequest();
+  req.onload = function () {
+    let json = JSON.parse(req.responseText);
+    callback(json);
+  };
+  req.open('POST', 'https://thingproxy.freeboard.io/fetch/https://api.flightplandatabase.com/auto/decode', true); // through CORS proxy with limited traffic
+  req.setRequestHeader('Accept', '*');
+  req.setRequestHeader('Content-Type', 'application/json');
+  req.setRequestHeader('Authorization', 'Basic 73HM02I7ZdwXOy9xld8bYBLkilnyff6cjZpQjX2o');
+  req.send(JSON.stringify({route : routeString}));
+}
+
+function downloadRoute(routeId, callback) {
+  var req = new XMLHttpRequest();
+  req.onload = function () {
+    let json = JSON.parse(req.responseText);
+    callback(json);
+  };
+  req.open('GET', 'https://cors.io/?https://api.flightplandatabase.com/plan/'+routeId, true); // through CORS proxy with limited traffic
+  req.setRequestHeader('Accept', 'application/json');
+  req.send();
+}
 
 function addSIGMETLayer(url, label) {
   var req = new XMLHttpRequest();

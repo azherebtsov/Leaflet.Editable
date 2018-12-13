@@ -285,20 +285,38 @@
           }
         };
 
-        /*if( idx < latlngs.length - 1 ) {
+        if( idx < latlngs.length - 1 ) {
           var bearing = L.GeometryUtil.bearing(point, latlngs[idx+1]);
           if(bearing<0) {
             bearing += 360;
           }
-          waypoint['Track'] = {
+          waypoint['Track'] = [{
             OutboundTrack: {
               Value: {
                 _type: "true",
                   __text: bearing
               }
             }
-          };
-        }*/
+          }, {
+            OutboundTrack: {
+              Value: {
+                _type: "magnetic",
+                  __text: bearing
+              }
+            }
+          }];
+        }
+
+        if( point.ident !== undefined ) {
+          waypoint._waypointId = point.ident;
+          waypoint._waypointName = point.ident;
+        }
+
+        if( point.airway !== undefined ) {
+          waypoint['Airway'] = {
+            __text: point.airway
+          }
+        }
 
         points.push(waypoint);
 
