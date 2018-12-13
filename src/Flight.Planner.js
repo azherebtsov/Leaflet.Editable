@@ -42,6 +42,10 @@
           // Recreate everything from scratch
           var wpts = [];
 
+          var distance = 0;
+          for (var i = 0; i < latlngs.length - 1; i++) {
+            distance += latlngs[i].distanceTo(latlngs[i + 1]);
+          }
           latlngs.forEach(function (point, idx) {
             // build profile chart
             if (point.alt === undefined) {
@@ -53,10 +57,6 @@
             }
             var x = idx;
             if (idx > 0) {
-              var distance = 0;
-              for (var i = 0; i < latlngs.length - 1; i++) {
-                distance += latlngs[i].distanceTo(latlngs[i + 1]);
-              }
               x = wpts[idx - 1].lng + latlngs.length * latlngs[idx - 1].distanceTo(latlngs[idx]) / distance;
             }
             var latlng = xy(x, point.alt * ratio);
@@ -94,18 +94,20 @@
           profile.editing.deleteVertexEnabled = false;
           profile.snapediting.enable();
 
+          profile.ratio = ratio;
+
           this.flightPlanner.profile = profile;
         } else {
           // Only updates
           var _profile = this.flightPlanner.profile;
           var _wpts = _profile.getLatLngs();
+          var distance = 0;
+          for (var i = 0; i < latlngs.length - 1; i++) {
+            distance += latlngs[i].distanceTo(latlngs[i + 1]);
+          }
           latlngs.forEach(function (point, idx) {
             var x = idx;
             if (idx > 0) {
-              var distance = 0;
-              for (var i = 0; i < latlngs.length - 1; i++) {
-                distance += latlngs[i].distanceTo(latlngs[i + 1]);
-              }
               x = _wpts[idx - 1].lng + latlngs.length * latlngs[idx - 1].distanceTo(latlngs[idx]) / distance;
             }
             _wpts[idx].lng = x;
@@ -127,6 +129,54 @@
         levelBaselines = new L.FeatureGroup();
       }
       this.flightPlanner.onPathCreatedForProfile.call(this, layer, reset);
+    },
+
+    onElevationCalculated: function(event) {
+      let elevation = event.elevation;
+      let latlngs = this.flightPlanner.profile.getLatLngs();
+      if( latlngs !== undefined && latlngs.length > 1 ) {
+        var map = this;
+
+        var ratio = this.flightPlanner.profile.ratio;
+        // Recreate everything from scratch
+        var wpts = [];
+
+        var distance = 0;
+        let ll = event.layer.getLatLngs();
+        for (var i = 0; i < ll.length - 1; i++) {
+          distance += ll[i].distanceTo(ll[i + 1]);
+        }
+        let screenWidth = latlngs[latlngs.length-1].lng-latlngs[0].lng;
+        let screenResolution = distance / screenWidth;
+
+        elevation.forEach(function (point, idx) {
+          // build elevation profile chart
+          var x = idx;
+          if (idx > 0) {
+            x = point[3] / screenResolution;
+          }
+          var latlng = xy(x, point[2] > 0 ? point[2] * 0.03280839895 * ratio : 0);
+          wpts.push(latlng);
+        });
+
+        // add points to zero level at both ends of the chart
+        let end = wpts[wpts.length-1];
+        let start = wpts[0];
+        wpts.push([0, end.lng]);
+        wpts.push([0, start.lng]);
+
+        let elevProfile = L.polygon(wpts, {
+          stroke: true,
+          color: '#000',
+          weight: 1,
+          opacity: 1,
+          fill: true
+        }).addTo(map).bringToBack();
+        if( this.flightPlanner.profile.elevation !== undefined ) {
+          map.removeLayer(this.flightPlanner.profile.elevation)
+        }
+        this.flightPlanner.profile.elevation = elevProfile;
+      }
     }
   });
 
@@ -176,6 +226,7 @@
         // profile map
         this.on('path:created', this.flightPlanner.onPathCreatedForProfile);
         this.on('path:edited', this.flightPlanner.onPathEditedForProfile);
+        this.on('elevation:calculated', this.flightPlanner.onElevationCalculated);
       }
     });
 

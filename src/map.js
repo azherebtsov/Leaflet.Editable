@@ -240,6 +240,7 @@ ${p.rawAirSigmet}
 };
 
 var buffer = function (poly, radius, units, onSuccess){};
+var elevation = function (poly, onSuccess){};
 
 require([
   "esri/geometry/webMercatorUtils",
@@ -248,36 +249,38 @@ require([
   webMercatorUtils
 ) {
 
-  function bufferImpl(latlngs, radius = 250, units = 9093, onSuccess){
-    //Pull first layer from the webmap and use it as input for the buffer operation
-    //Use GeometryEngine geodesicBuffer
-    //buffers will have correct distance no matter what the spatial reference of the map is.
-
-    if(radius < 1) {
-      onSuccess([]);
-    }
-
-    let ring=[], points=[];
-    latlngs.forEach(function(point, idx){
+  function toEsriPath(latlngs, segmentGranularity = 10) {
+    let ring = [], points = [], step = 1 / segmentGranularity;
+    latlngs.forEach(function (point, idx) {
       ring.push([point.lat, point.lng]);
-      if( idx < latlngs.length - 1 ) {
-        let next = latlngs[idx+1], ip;
-        for(let i=0;i<1;i+=0.1) {
+      if (idx < latlngs.length - 1) {
+        let next = latlngs[idx + 1], ip;
+        for (let i = step; i < 1; i += step) {
           ip = point.intermediatePointTo(next, i);
           let p = [ip.lat, ip.lng];
-          let m = webMercatorUtils.lngLatToXY(ip.lng, ip.lat);
           ring.push(p);
-          points.push(//{
-            [m[0], m[1]]
-          );
         }
       }
     });
 
-    let polylineJson = {
-       "paths":[points],
-       "spatialReference":{"wkid": CRS_WEB_MERCATOR}
+    ring.forEach(function (ip) {
+      let m = webMercatorUtils.lngLatToXY(ip[1], ip[0]);
+      points.push(//{
+        [m[0], m[1]]
+      );
+    });
+    return {
+      "paths": [points],
+      "spatialReference": {"wkid": CRS_WEB_MERCATOR}
     };
+  }
+
+  function bufferImpl(latlngs, radius = 250, units = 9093, onSuccess){
+    if(radius < 1) {
+      onSuccess([]);
+    }
+
+    let polylineJson = toEsriPath(latlngs);
 
     let xhr = new XMLHttpRequest();
     let requestURL = 'https://utility.arcgisonline.com/ArcGIS/rest/services/Geometry/GeometryServer/buffer';
@@ -335,7 +338,73 @@ require([
     xhr.send();
   }
 
+  function elevationImpl(latlngs, onSuccess){
+    let polylineJson = toEsriPath(latlngs, 4);
+
+    let xhr = new XMLHttpRequest();
+    let requestURL = 'https://elevation.arcgis.com/arcgis/rest/services/Tools/ElevationSync/GPServer/Profile/execute';
+    let params = {
+      f: 'json',
+      'env:outSR': CRS_WEB_MERCATOR,
+      'InputLineFeatures': JSON.stringify({
+        "fields":[{"name":"OID","type":"esriFieldTypeObjectID","alias":"OID"}],
+        "geometryType":"esriGeometryPolyline",
+        "features":[{"geometry":polylineJson,"attributes":{"OID":1}}],
+        "sr":{"wkid":CRS_WEB_MERCATOR,"latestWkid":3857}
+        }),
+      ProfileIDField: 'OID',
+      DEMResolution: 'FINEST',
+      MaximumSampleDistance: 10000,
+      MaximumSampleDistanceUnits: 'Meters',
+      returnZ: true,
+      returnM: true
+    };
+
+    xhr.open('GET', requestURL + this._formatParams(params), true );
+    // Specify the http content-type as json
+    xhr.setRequestHeader('Accept', '*/*');
+
+    // Response handlers
+    let elevation = [];
+    xhr.onload = function() {
+      let responseText = xhr.responseText;
+      let response = JSON.parse(responseText);
+
+      response.results[0].value.features.forEach(function (feature) {
+        let geometry = feature.geometry;
+        let points=[];
+        let paths = geometry.paths;
+        paths.forEach(function(ring){
+          let _points = [];
+          ring.forEach(function (point) {
+            let m = webMercatorUtils.xyToLngLat(point[0], point[1]);
+            _points.push([m[1], m[0], point[2], point[3]]);
+          });
+          points.push(_points);
+        });
+
+        elevation.push(/*new L.polygon(points,
+          {
+            stroke: true,
+            color: color,
+            weight: 2,
+            opacity: 0.9,
+            fill: false,
+            clickable: false
+          })*/ points);
+      });
+
+      onSuccess(elevation[0][0]);
+    };
+
+    xhr.onerror = function() {
+      console.log('There was an error!');
+    };
+    xhr.send();
+  }
+
   window.buffer = bufferImpl;
+  window.elevation = elevationImpl;
 });
 
 // Weather layers
@@ -652,10 +721,14 @@ function modifyPolyToRoute(layer) {
   resetTooltip(layer);
   layer.editing.enable();
   addRouteCorridor(layer);
+  elevation(layer.getLatLngs(), function(_elevation) {
+    profile.fire('elevation:calculated', {'elevation':_elevation, layer:layer});
+  });
   layer.on('edit', function () {
     resetTooltip(layer);
     profile.fire('path:edited', layer);
     resetBuffer(layer);
+    resetElevation(layer, profile);
   });
   layer.on('editdrag', function () {
     resetHeadings(layer);
@@ -712,6 +785,12 @@ resetBuffer = debounce(function (route) {
     }
   }
 }, 100);
+
+resetElevation = debounce(function (route, profile) {
+  elevation(route.getLatLngs(), function(_elevation) {
+    profile.fire('elevation:calculated', {'elevation':_elevation, layer:route});
+  });
+}, 2000);
 
 // Object created - bind popup to layer, add to feature group
 map.on(L.Draw.Event.CREATED, function(event) {
