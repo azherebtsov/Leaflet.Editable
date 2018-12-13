@@ -168,6 +168,57 @@ let airports = L.esri.Cluster.featureLayer({
           var popupContent = ""
           if (tafJSON.response.data._num_results == 1) {
             popupContent += tafJSON.response.data.TAF.raw_text;
+            popupContent += "<br>DECODED:<br>"
+            forecasts = tafJSON.response.data.TAF.forecast;
+            for(i=0;i<forecasts.length;i++) {
+              popupContent += "<br>"
+              popupContent += forecasts[i].fcst_time_from  + " - "  + forecasts[i].fcst_time_to + "<br>";
+              wind_speed_kt = forecasts[i].wind_speed_kt
+              if( !(wind_speed_kt === undefined) ) {
+                if(wind_speed_kt > 15) {
+                  popupContent += " Wind speed: <span style='color:red'>" + wind_speed_kt + " kt</span> "
+                } else if(wind_speed_kt > 8) {
+                  popupContent += " Wind speed: <span style='color:orange'>" + wind_speed_kt + " kt</span> "
+                } else {
+                  popupContent += " Wind speed: <span style='color:green'>" + wind_speed_kt + " kt</span> "
+                }
+
+              }
+
+
+
+
+              sky_condition = forecasts[i].sky_condition;
+              if(sky_condition.length === undefined) {
+                sky_condition = [sky_condition];
+              }
+
+
+                for (j = 0; j < sky_condition.length; j++) {
+
+                  var skyConditionElement = sky_condition[j]
+                  if (skyConditionElement['_sky_cover']) {
+                      popupContent += " Sky: <span style='color:black'>" + skyConditionElement["_sky_cover"] + "</span> "
+                  }
+                  var cloudBase = skyConditionElement["_cloud_base_ft_agl"]
+                  if (cloudBase) {
+                    if (cloudBase > 1500) {
+                      popupContent += " base: <span style='color:green'>" + cloudBase + " ft</span> "
+                    } else if (cloudBase > 1000) {
+                      popupContent += " base: <span style='color:orange'>" + cloudBase + " ft</span> "
+                    } else {
+                      popupContent += " base: <span style='color:green'>" + cloudBase + " ft</span> "
+                    }
+
+                  }
+
+                }
+
+              }
+              popupContent += "<br>"
+
+
+
           } else {
             popupContent += "Data not available";
           }
