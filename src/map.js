@@ -59,30 +59,155 @@ let firBorders = L.tileLayer.wms('https://gis.icao.int/ArcGIS/rest/services/FIRM
   });
 firBorders.addTo(map);
 
+function formatWXMessage(message) {
+  var formattedMessage = "";
+  abbs = ["PROB", "PROB30", "PROB40", "BECMG", "FM", "RMK", "TEMPO", "INTER"];
+  tokens = message.split(" ");
+  for(i=0;i<tokens.length;i++) {
+    if(abbs.indexOf(tokens[i]) > -1 ) {
+      addNewLine = true;
+      if(i > 1 ) {
+        if(abbs.indexOf(tokens[i-1]) > -1) {
+          addNewLine = false;
+        }
+      }
+      if(addNewLine) {
+        formattedMessage += "<br>";
+      }
+
+    }
+    formattedMessage += tokens[i] + " ";
+  }
+
+  return formattedMessage;
+}
+
+
+function getAirportLabelContent (airportPoint, airportMarker) {
+  var label = "<h3>" + airportPoint.properties.ICAO + " " + "<span style='color:red'>" + airportPoint.properties.IATA +
+    "</span></h3>" + airportPoint.properties[ "Airport_Name" ] +
+    "         <small>(" + airportPoint.properties.City + ")</small>" +
+    "<h4>METAR</h4>";
+
+  metar = airportMarker.METAR;
+  taf = airportMarker.TAF;
+
+  if(metar === undefined) {
+    label += "Loading...";
+  } else {
+    label += metar;
+  }
+
+  label += "<h4>TAF</h4>"
+  if(taf === undefined) {
+    label += "Loading...";
+  } else  {
+    label += formatWXMessage(taf);
+  }
+
+
+
+  return label;
+
+}
+
+
+
 // Airports
 let airports = L.esri.Cluster.featureLayer({
   showCoverageOnHover: false,
   url: "https://services1.arcgis.com/vHnIGBHHqDR6y0CR/arcgis/rest/services/World_Airport_Locations/FeatureServer/0",
   pointToLayer: function (airportPoint, latlng) {
+
+    var x2js = new X2JS();
+
+
+
     let airport = L.circleMarker(latlng,
       {
-        radius: 3,
-        fillColor: "#ca7049",
-        fillOpacity: 0.4,
-        color: "#000",
-        weight: 1
+        radius: 10,
+        fillOpacity: 0,
+        weight: 0,
       }
     );
+
+
     airport.bindTooltip(
-      "<h3>"+airportPoint.properties.ICAO+" "+"<span style='color:red'>"+airportPoint.properties.IATA+
-      "</span></h3>"+airportPoint.properties["Airport_Name"]+
-      "<br><small>"+airportPoint.properties.City+"<small>",
+
+      getAirportLabelContent(airportPoint, airport),
       { opacity: 0.8 }).openTooltip();
+
+    airport.on('mouseover', function () {
+      {
+        let xhr = new XMLHttpRequest();
+        let requestURL = 'https://cors.io/?https://www.aviationweather.gov/adds/dataserver_current/httpparam?dataSource=metars&requestType=retrieve&format=xml&hoursBeforeNow=3&mostRecent=true&stationString=';
+        xhr.open('GET', requestURL + airportPoint.properties[ "ICAO" ], true);
+        xhr.setRequestHeader('Accept', '*/*');
+        xhr.onload = function () {
+          var metarJSON = x2js.xml2json(x2js.parseXmlString(xhr.responseText))
+          var popupContent = "Data not available";
+          if (metarJSON.response.data._num_results == 1) {
+            popupContent = metarJSON.response.data.METAR.raw_text;
+          }
+          airport.METAR = popupContent;
+          airport.getTooltip().setContent(getAirportLabelContent(airportPoint, airport));
+        };
+
+        xhr.onerror = function () {
+          airport.METAR = "Problem with retrieve METAR, DO NOT PANIC!";
+        };
+        xhr.send();
+      }
+      {
+        xhr2 = new XMLHttpRequest();
+        let requestURLTAF = 'https://cors.io/?https://www.aviationweather.gov/adds/dataserver_current/httpparam?dataSource=tafs&requestType=retrieve&format=xml&hoursBeforeNow=3&timeType=issue&mostRecent=true&stationString=';
+        xhr2.open('GET', requestURLTAF + airportPoint.properties[ "ICAO" ], true);
+        xhr2.setRequestHeader('Accept', '*/*');
+        xhr2.onload = function () {
+          var tafJSON = x2js.xml2json(x2js.parseXmlString(xhr2.responseText));
+          var popupContent = ""
+          if (tafJSON.response.data._num_results == 1) {
+            popupContent += tafJSON.response.data.TAF.raw_text;
+          } else {
+            popupContent += "Data not available";
+          }
+
+          airport.TAF = popupContent;
+          airport.getTooltip().setContent(getAirportLabelContent(airportPoint, airport));
+
+        };
+
+        xhr2.onerror = function () {
+          airport.TAF = "Problem with retrieve TAF, DO NOT PANIC!";
+        };
+        xhr2.send();
+      }
+
+    });
+
     return airport;
   }
 });
 airports.addTo(map);
 
+let airportIcons = L.esri.Cluster.featureLayer({
+  showCoverageOnHover: false,
+  url: "https://services1.arcgis.com/vHnIGBHHqDR6y0CR/arcgis/rest/services/World_Airport_Locations/FeatureServer/0",
+  pointToLayer: function (airportPoint, latlng) {
+    let airportIcon = L.circleMarker(latlng,
+      {
+        radius: 2,
+        fillColor: "#ca7049",
+        fillOpacity: 0.4,
+        color: "#000",
+        weight: 1,
+      }
+    );
+    return airportIcon;
+  }
+});
+
+airportIcons.addTo(map);
 /**
  * Handling dep and arr URL parameters. Could be better - two codes could be handled by one request
  */
