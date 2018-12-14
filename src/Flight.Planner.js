@@ -285,27 +285,27 @@
           }
         };
 
-        if( idx < latlngs.length - 1 ) {
-          var bearing = L.GeometryUtil.bearing(point, latlngs[idx+1]);
-          if(bearing<0) {
-            bearing += 360;
-          }
-          waypoint['Track'] = [{
-            OutboundTrack: {
-              Value: {
-                _type: "true",
-                  __text: bearing
-              }
-            }
-          }, {
-            OutboundTrack: {
-              Value: {
-                _type: "magnetic",
-                  __text: bearing
-              }
-            }
-          }];
-        }
+        // if( idx < latlngs.length - 1 ) {
+        //   var bearing = L.GeometryUtil.bearing(point, latlngs[idx+1]);
+        //   if(bearing<0) {
+        //     bearing += 360;
+        //   }
+        //   waypoint['Track'] = [{
+        //     OutboundTrack: {
+        //       Value: {
+        //         _type: "true",
+        //           __text: bearing
+        //       }
+        //     }
+        //   }, {
+        //     OutboundTrack: {
+        //       Value: {
+        //         _type: "magnetic",
+        //           __text: bearing
+        //       }
+        //     }
+        //   }];
+        // }
 
         if( point.ident !== undefined ) {
           waypoint._waypointId = point.ident;

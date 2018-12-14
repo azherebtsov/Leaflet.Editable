@@ -125,8 +125,6 @@ let airports = L.esri.Cluster.featureLayer({
       }
     );
 
-    airportIcon.addTo(map);
-
     let airport = L.circleMarker(latlng,
       {
         radius: 10,
@@ -134,7 +132,7 @@ let airports = L.esri.Cluster.featureLayer({
         weight: 0,
       }
     );
-    airport.bringToFront();
+
     airport.bindTooltip(
       getAirportLabelContent(airportPoint, airport),
       { opacity: 0.8 }).openTooltip();
@@ -250,29 +248,14 @@ let airports = L.esri.Cluster.featureLayer({
 
     });
 
-    return airport;
+    airport.addTo(map);
+
+    return airportIcon;
   }
 });
 airports.addTo(map);
 
-let airportIcons = L.esri.Cluster.featureLayer({
-  showCoverageOnHover: false,
-  url: "https://services1.arcgis.com/vHnIGBHHqDR6y0CR/arcgis/rest/services/World_Airport_Locations/FeatureServer/0",
-  pointToLayer: function (airportPoint, latlng) {
-    let airportIcon = L.circleMarker(latlng,
-      {
-        radius: 2,
-        fillColor: "#ca7049",
-        fillOpacity: 0.4,
-        color: "#000",
-        weight: 1,
-      }
-    );
-    return airportIcon;
-  }
-});
 
-airportIcons.addTo(map);
 /**
  * Handling dep and arr URL parameters. Could be better - two codes could be handled by one request
  */

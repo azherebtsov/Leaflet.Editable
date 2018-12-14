@@ -14,6 +14,7 @@ Design keys:
 - Uses [Leaflet](https://github.com/Leaflet/Leaflet) and some its plugins (see the code)
 - No back end (except tile providers) 
 - Layers - Airports (Clustered), FIRs, Weather, SIGMET, NAV
+- Airport METARs and decoded TAFs
 - Great circle waypoint connections
 - Editable route
 - Heading labels
