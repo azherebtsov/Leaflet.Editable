@@ -376,7 +376,7 @@ function decodeRoute(routeString, callback) {
     let json = JSON.parse(req.responseText);
     callback(json);
   };
-  req.open('POST', 'https://thingproxy.freeboard.io/fetch/https://api.flightplandatabase.com/auto/decode', true); // through CORS proxy with limited traffic
+  req.open('POST', 'https://cors-anywhere.herokuapp.com/https://api.flightplandatabase.com/auto/decode', true); // through CORS proxy with limited traffic
   req.setRequestHeader('Accept', '*');
   req.setRequestHeader('Content-Type', 'application/json');
   req.setRequestHeader('Authorization', 'Basic 73HM02I7ZdwXOy9xld8bYBLkilnyff6cjZpQjX2o');
