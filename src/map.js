@@ -1,4 +1,4 @@
-let startPoint = [52.17333304, 20.98416353];
+let startPoint = [ 52.17333304, 20.98416353 ];
 
 const CRS_WEB_MERCATOR = 102100;
 const color = '#bb44bb';
@@ -14,7 +14,7 @@ let routeDefaultOptions = {
   gcpoly: true
 };
 
-const map = L.map('map',{
+const map = L.map('map', {
   center: startPoint,
   zoom: 6
 });
@@ -23,21 +23,21 @@ const profile = L.map('profile', {
   profile: true,
   minZoom: -5,
   maxBounds: [
-    [-2, -5],
-    [1000, 1000]
+    [ -2, -5 ],
+    [ 1000, 1000 ]
   ]
-}).setView([-2,-5], -5);
+}).setView([ -2, -5 ], -5);
 
 let showCoord = L.control.coordinates({
-  position:"bottomleft",
-  useDMS:true,
-  useLatLngOrder:true
+  position: "bottomleft",
+  useDMS: true,
+  useLatLngOrder: true
 });
 showCoord.addTo(map);
 
 tilelayer = L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
-    attribution: 'Data \u00a9 <a href="http://www.openstreetmap.org/copyright"> OpenStreetMap Contributors </a> Tiles \u00a9 <a href="http://carto.com">CARTO</a>'
-  }).addTo(map);
+  attribution: 'Data \u00a9 <a href="http://www.openstreetmap.org/copyright"> OpenStreetMap Contributors </a> Tiles \u00a9 <a href="http://carto.com">CARTO</a>'
+}).addTo(map);
 
 // NAV layers
 let subdomains = 'abc';
@@ -59,29 +59,28 @@ let firBorders = L.tileLayer.wms('https://gis.icao.int/ArcGIS/rest/services/FIRM
   });
 firBorders.addTo(map);
 
-function formatWXMessage(message) {
+function formatWXMessage (message) {
   var formattedMessage = "";
-  abbs = ["PROB", "PROB30", "PROB40", "BECMG", "FM", "RMK", "TEMPO", "INTER"];
+  abbs = [ "PROB", "PROB30", "PROB40", "BECMG", "FM", "RMK", "TEMPO", "INTER" ];
   tokens = message.split(" ");
-  for(i=0;i<tokens.length;i++) {
-    if(abbs.indexOf(tokens[i]) > -1 ) {
+  for (i = 0; i < tokens.length; i++) {
+    if (abbs.indexOf(tokens[ i ]) > -1) {
       addNewLine = true;
-      if(i > 1 ) {
-        if(abbs.indexOf(tokens[i-1]) > -1) {
+      if (i > 1) {
+        if (abbs.indexOf(tokens[ i - 1 ]) > -1) {
           addNewLine = false;
         }
       }
-      if(addNewLine) {
+      if (addNewLine) {
         formattedMessage += "<br>";
       }
 
     }
-    formattedMessage += tokens[i] + " ";
+    formattedMessage += tokens[ i ] + " ";
   }
 
   return formattedMessage;
 }
-
 
 function getAirportLabelContent (airportPoint, airportMarker) {
   var label = "<h3>" + airportPoint.properties.ICAO + " " + "<span style='color:red'>" + airportPoint.properties.IATA +
@@ -92,26 +91,21 @@ function getAirportLabelContent (airportPoint, airportMarker) {
   metar = airportMarker.METAR;
   taf = airportMarker.TAF;
 
-  if(metar === undefined) {
+  if (metar === undefined) {
     label += "Loading...";
   } else {
     label += metar;
   }
 
   label += "<h4>TAF</h4>"
-  if(taf === undefined) {
+  if (taf === undefined) {
     label += "Loading...";
-  } else  {
+  } else {
     label += formatWXMessage(taf);
   }
 
-
-
   return label;
-
 }
-
-
 
 // Airports
 let airports = L.esri.Cluster.featureLayer({
@@ -121,7 +115,17 @@ let airports = L.esri.Cluster.featureLayer({
 
     var x2js = new X2JS();
 
+    let airportIcon = L.circleMarker(latlng,
+      {
+        radius: 3,
+        fillColor: "#ca7049",
+        fillOpacity: 0.4,
+        color: "#000",
+        weight: 1,
+      }
+    );
 
+    airportIcon.addTo(map);
 
     let airport = L.circleMarker(latlng,
       {
@@ -130,10 +134,8 @@ let airports = L.esri.Cluster.featureLayer({
         weight: 0,
       }
     );
-
-
+    airport.bringToFront();
     airport.bindTooltip(
-
       getAirportLabelContent(airportPoint, airport),
       { opacity: 0.8 }).openTooltip();
 
@@ -144,13 +146,18 @@ let airports = L.esri.Cluster.featureLayer({
         xhr.open('GET', requestURL + airportPoint.properties[ "ICAO" ], true);
         xhr.setRequestHeader('Accept', '*/*');
         xhr.onload = function () {
-          var metarJSON = x2js.xml2json(x2js.parseXmlString(xhr.responseText))
-          var popupContent = "Data not available";
-          if (metarJSON.response.data._num_results == 1) {
-            popupContent = metarJSON.response.data.METAR.raw_text;
+          var responseText = xhr.responseText
+          try{
+            var metarJSON = x2js.xml2json(x2js.parseXmlString(responseText))
+            var popupContent = "Data not available";
+            if (metarJSON.response.data._num_results == 1) {
+              popupContent = metarJSON.response.data.METAR.raw_text;
+            }
+            airport.METAR = popupContent;
+
+          } finally {
+            airport.getTooltip().setContent(getAirportLabelContent(airportPoint, airport));
           }
-          airport.METAR = popupContent;
-          airport.getTooltip().setContent(getAirportLabelContent(airportPoint, airport));
         };
 
         xhr.onerror = function () {
@@ -164,17 +171,75 @@ let airports = L.esri.Cluster.featureLayer({
         xhr2.open('GET', requestURLTAF + airportPoint.properties[ "ICAO" ], true);
         xhr2.setRequestHeader('Accept', '*/*');
         xhr2.onload = function () {
-          var tafJSON = x2js.xml2json(x2js.parseXmlString(xhr2.responseText));
-          var popupContent = ""
-          if (tafJSON.response.data._num_results == 1) {
-            popupContent += tafJSON.response.data.TAF.raw_text;
-          } else {
-            popupContent += "Data not available";
+
+          var responseText = xhr2.responseText
+          if(responseText === undefined) {
+            airport.TAF = "Data not available";
+
+            airport.getTooltip().setContent(getAirportLabelContent(airportPoint, airport));
+            return;
           }
+          var tafJSON = x2js.xml2json(x2js.parseXmlString(responseText));
+          var popupContent = ""
+          try {
+            if (tafJSON.response.data._num_results == 1) {
+              popupContent += tafJSON.response.data.TAF.raw_text;
+              popupContent += "<br>DECODED:<br>"
+              forecasts = tafJSON.response.data.TAF.forecast;
+              for (i = 0; i < forecasts.length; i++) {
+                popupContent += "<br>"
+                popupContent += forecasts[ i ].fcst_time_from + " - " + forecasts[ i ].fcst_time_to + "<br>";
+                wind_speed_kt = forecasts[ i ].wind_speed_kt
+                if (!(wind_speed_kt === undefined)) {
+                  if (wind_speed_kt > 15) {
+                    popupContent += " Wind speed: <span style='color:red'>" + wind_speed_kt + " kt</span> "
+                  } else if (wind_speed_kt > 8) {
+                    popupContent += " Wind speed: <span style='color:orange'>" + wind_speed_kt + " kt</span> "
+                  } else {
+                    popupContent += " Wind speed: <span style='color:green'>" + wind_speed_kt + " kt</span> "
+                  }
 
-          airport.TAF = popupContent;
-          airport.getTooltip().setContent(getAirportLabelContent(airportPoint, airport));
+                }
 
+                sky_condition = forecasts[ i ].sky_condition;
+                if (!(sky_condition === undefined)) {
+                  if (sky_condition.length === undefined) {
+                    sky_condition = [ sky_condition ];
+                  }
+
+                  for (j = 0; j < sky_condition.length; j++) {
+
+                    var skyConditionElement = sky_condition[ j ]
+                    if (skyConditionElement[ '_sky_cover' ]) {
+                      popupContent += " Sky: <span style='color:black'>" + skyConditionElement[ "_sky_cover" ] + "</span> "
+                    }
+                    var cloudBase = skyConditionElement[ "_cloud_base_ft_agl" ]
+                    if (cloudBase) {
+                      if (cloudBase > 1500) {
+                        popupContent += " base: <span style='color:green'>" + cloudBase + " ft</span> "
+                      } else if (cloudBase > 1000) {
+                        popupContent += " base: <span style='color:orange'>" + cloudBase + " ft</span> "
+                      } else {
+                        popupContent += " base: <span style='color:green'>" + cloudBase + " ft</span> "
+                      }
+
+                    }
+
+                  }
+                }
+
+              }
+              popupContent += "<br>"
+
+            } else {
+              popupContent += "Data not available";
+            }
+
+            airport.TAF = popupContent;
+
+          } finally {
+            airport.getTooltip().setContent(getAirportLabelContent(airportPoint, airport));
+          }
         };
 
         xhr2.onerror = function () {
@@ -215,18 +280,18 @@ window.onload = function () {
   let url = new URL(window.location.href);
   let dep = url.searchParams.get("dep"), arr = url.searchParams.get("arr");
   let points = [];
-  let where = "ICAO IN ('"+dep+"', '"+arr+"')";
+  let where = "ICAO IN ('" + dep + "', '" + arr + "')";
   //airports.setWhere(where);
   airports.query()
     .where(where)
-    .run(function(error, featureCollection){
-      if( featureCollection.features.length > 0  ) {
-        let coords_0 = featureCollection.features[0].geometry.coordinates,
-          coords_1 = featureCollection.features[1].geometry.coordinates;
-        points[0] = new L.LatLng(coords_0[1], coords_0[0]);
-        points[3] = new L.LatLng(coords_1[1], coords_1[0]);
-        points[1] = points[0].intermediatePointTo(points[3], 0.1);
-        points[2] = points[0].intermediatePointTo(points[3], 0.9);
+    .run(function (error, featureCollection) {
+      if (featureCollection.features.length > 0) {
+        let coords_0 = featureCollection.features[ 0 ].geometry.coordinates,
+          coords_1 = featureCollection.features[ 1 ].geometry.coordinates;
+        points[ 0 ] = new L.LatLng(coords_0[ 1 ], coords_0[ 0 ]);
+        points[ 3 ] = new L.LatLng(coords_1[ 1 ], coords_1[ 0 ]);
+        points[ 1 ] = points[ 0 ].intermediatePointTo(points[ 3 ], 0.1);
+        points[ 2 ] = points[ 0 ].intermediatePointTo(points[ 3 ], 0.9);
         let route = new L.Polyline(points, routeDefaultOptions);
         modifyPolyToRoute(route).addTo(map);
         map.fitBounds(points);
@@ -348,7 +413,7 @@ function addSIGMETLayer(url, label) {
   req.onload = function () {
     let json = JSON.parse(req.responseText);
     let sigmetsLayer = L.geoJSON(json, {
-      attribution:'<a href="https://www.aviationweather.gov">AWC</a>',
+      attribution: '<a href="https://www.aviationweather.gov">AWC</a>',
       filter: function (feature) {
         // TODO: add checkbox set with all possible hazard types in order to show/hide SIGMETs by type
         return true;
@@ -364,37 +429,37 @@ function addSIGMETLayer(url, label) {
           'stroke-opacity': 1
         };
         var style = {};
-        if( 'TS' === hazard ) {
+        if ('TS' === hazard) {
           style = {
             color: '#F88'
           }
         }
-        if( 'ICE' === hazard ) {
+        if ('ICE' === hazard) {
           style = {
             color: '#00F'
           }
         }
-        if( 'TURB' === hazard || 'CAT' === hazard ) {
+        if ('TURB' === hazard || 'CAT' === hazard) {
           style = {
             color: 'rgb(0, 160, 96)'
           }
         }
-        if( 'TC' === hazard ) {
+        if ('TC' === hazard) {
           style = {
             color: '#F0F'
           }
         }
-        if( 'MTW' === hazard ) {
+        if ('MTW' === hazard) {
           style = {
             color: '#0FF'
           }
         }
-        if( 'IFR' === hazard ) {
+        if ('IFR' === hazard) {
           style = {
             color: '#FF0'
           }
         }
-        if( 'VA' === hazard ) {
+        if ('VA' === hazard) {
           style = {
             color: '#F00'
           }
@@ -403,14 +468,14 @@ function addSIGMETLayer(url, label) {
       }
     }).bindPopup(function (layer) {
       let p = layer.feature.properties;
-      if( p.cwaText !== undefined ) { // CWA
+      if (p.cwaText !== undefined) { // CWA
         return `
 <div class="sigmet_header">Center Weather Advisory</div>
 <span class="sigmet_header_filed">CWSU:</span> ${p.cwsu} [${p.name}]<br />
 <span class="sigmet_header_filed">Hazard:</span> ${p.hazard}<br />
 <span class="sigmet_header_filed">Begins:</span> ${p.validTimeFrom}<br />
 <span class="sigmet_header_filed">Ends:</span> ${p.validTimeTo}<br />
-${p.top !== undefined ? `<span class="sigmet_header_filed">Top:</span> ${p.top} ft<br />`: ''}
+${p.top !== undefined ? `<span class="sigmet_header_filed">Top:</span> ${p.top} ft<br />` : ''}
 ${p.geom === 'UNK'
           ? '<span class="sigmet_header_filed">Region:</span> Undetermined, displaying whole FIR<br />'
           : ''
@@ -419,7 +484,7 @@ ${p.geom === 'UNK'
 ${p.cwaText}
 </div>
 `
-      } else if( p.rawSigmet !== undefined ) { // International SIGMETs
+      } else if (p.rawSigmet !== undefined) { // International SIGMETs
         return `
 <div class="sigmet_header">${p.hazard} SIGMET</div>
 <span class="sigmet_header_filed">FIR Name:</span> ${p.firName}<br />
@@ -436,7 +501,7 @@ ${p.geom === 'UNK'
 ${p.rawSigmet}
 </div>
 `;
-      } else if( p.rawAirSigmet !== undefined ) { // US SIGMETs
+      } else if (p.rawAirSigmet !== undefined) { // US SIGMETs
         return `
 <div class="sigmet_header">${p.hazard} ${p.airSigmetType}</div>
 <span class="sigmet_header_filed">Center:</span> ${p.icaoId}<br />
@@ -460,7 +525,7 @@ ${p.rawAirSigmet}
 
     layersControl.addOverlay(sigmetsLayer, label);
   };
-  req.open('GET', 'https://cors.io/?'+url, true); // through CORS proxy with limited traffic
+  req.open('GET', 'https://cors.io/?' + url, true); // through CORS proxy with limited traffic
   req.setRequestHeader('Accept', '*/*');
   req.send();
 };
@@ -471,7 +536,7 @@ var elevation = function (poly, onSuccess){};
 require([
   "esri/geometry/webMercatorUtils",
   "dojo/domReady!"
-], function(
+], function (
   webMercatorUtils
 ) {
 
@@ -515,31 +580,31 @@ require([
       unit: units,
       unionResults: false,
       geodesic: true,
-      geometries: JSON.stringify({"geometryType":"esriGeometryPolyline","geometries":[polylineJson]}),
+      geometries: JSON.stringify({ "geometryType": "esriGeometryPolyline", "geometries": [ polylineJson ] }),
       inSR: CRS_WEB_MERCATOR,
-      distances: [radius],
+      distances: [ radius ],
       outSR: CRS_WEB_MERCATOR,
       bufferSR: CRS_WEB_MERCATOR
     };
 
-    xhr.open('GET', requestURL + this._formatParams(params), true );
+    xhr.open('GET', requestURL + this._formatParams(params), true);
     // Specify the http content-type as json
     xhr.setRequestHeader('Accept', '*/*');
 
     // Response handlers
     let buffers = [];
-    xhr.onload = function() {
+    xhr.onload = function () {
       let responseText = xhr.responseText;
       let response = JSON.parse(responseText);
 
       response.geometries.forEach(function (geometry) {
-        let points=[];
+        let points = [];
         let rings = geometry.rings;
-        rings.forEach(function(ring){
+        rings.forEach(function (ring) {
           let _points = [];
           ring.forEach(function (point) {
-            let m = webMercatorUtils.xyToLngLat(point[0], point[1]);
-            _points.push([m[1], m[0]]);
+            let m = webMercatorUtils.xyToLngLat(point[ 0 ], point[ 1 ]);
+            _points.push([ m[ 1 ], m[ 0 ] ]);
           });
           points.push(_points);
         });
@@ -558,7 +623,7 @@ require([
       onSuccess(buffers);
     };
 
-    xhr.onerror = function() {
+    xhr.onerror = function () {
       console.log('There was an error!');
     };
     xhr.send();
@@ -677,7 +742,7 @@ L.control.scale().addTo(map, {
 
 let corridorWidthControl = new L.Control.Slider().addTo(map);
 
-function ensurePrecision(val, precision) {
+function ensurePrecision (val, precision) {
   let str = '' + val;
   if (precision > 0) {
     let pointIdx = str.indexOf('.');
@@ -690,27 +755,27 @@ function ensurePrecision(val, precision) {
   return str;
 }
 
-function latLabel(lat, precision = 0, NW = true) {
-  let latStr = ensurePrecision( NW ? Math.abs(lat) : lat, precision);
-  return latStr + (NW?(lat < 0 ? "S" : "N") : "°");
+function latLabel (lat, precision = 0, NW = true) {
+  let latStr = ensurePrecision(NW ? Math.abs(lat) : lat, precision);
+  return latStr + (NW ? (lat < 0 ? "S" : "N") : "°");
 }
 
-function lngLabel(lng, precision = 0, NW = true) {
+function lngLabel (lng, precision = 0, NW = true) {
   let lngStr = ensurePrecision(NW ? Math.abs(lng) : lng, precision);
-  return lngStr + (NW?(lng < 0 ? "W" : "E") : "°");
+  return lngStr + (NW ? (lng < 0 ? "W" : "E") : "°");
 }
 
-function pointLatLngLabel(point, precision = 3, NW = true) {
+function pointLatLngLabel (point, precision = 3, NW = true) {
   let lat = latLabel(_round(point.lat, precision), NW);
   let lng = lngLabel(_round(point.lng, precision), NW);
-  return lat +(NW?"":":")+ lng;
+  return lat + (NW ? "" : ":") + lng;
 }
 
 // current location
-map.on('mousemove', function(event){
+map.on('mousemove', function (event) {
   document.getElementById("currentloc").innerHTML = pointLatLngLabel(event.latlng);
 });
-map.on('mouseout', function(){
+map.on('mouseout', function () {
   document.getElementById("currentloc").innerHTML = "";
 });
 
@@ -719,7 +784,7 @@ let drawnItems = new L.FeatureGroup();
 map.addLayer(drawnItems);
 
 const drawControl = new L.Control.Draw({
-  draw : {
+  draw: {
     polygon: false,
     marker: false,
     rectangle: false,
@@ -738,30 +803,30 @@ const drawControl = new L.Control.Draw({
 map.addControl(drawControl);
 
 // Truncate value based on number of decimals
-let _round = function(num, len) {
-  return Math.round(num*(Math.pow(10, len)))/(Math.pow(10, len));
+let _round = function (num, len) {
+  return Math.round(num * (Math.pow(10, len))) / (Math.pow(10, len));
 };
 
 // Generate popup content based on layer type
 // - Returns HTML string, or null if unknown object
-let getPopupContent = function(layer) {
+let getPopupContent = function (layer) {
   if (layer instanceof L.Polyline) {
     let latlngs = layer._defaultShape ? layer._defaultShape() : layer.getLatLngs(),
       distance = 0;
     if (latlngs.length < 2) {
       return "Distance: N/A";
     } else {
-      for (let i = 0; i < latlngs.length-1; i++) {
-        distance += latlngs[i].distanceTo(latlngs[i+1]);
+      for (let i = 0; i < latlngs.length - 1; i++) {
+        distance += latlngs[ i ].distanceTo(latlngs[ i + 1 ]);
       }
-      return "Distance: "+_round(distance/1000, 2)+" km (" + _round(distance * 0.539957 / 1000, 2) + "NM)" +
+      return "Distance: " + _round(distance / 1000, 2) + " km (" + _round(distance * 0.539957 / 1000, 2) + "NM)" +
         "<br><sub>Click to copy waypoints into clipboard</sub>";
     }
   }
   return null;
 };
 
-function resetTooltip(layer) {
+function resetTooltip (layer) {
   let content = getPopupContent(layer);
   if (content !== null) {
     layer.bindTooltip(content);
@@ -775,22 +840,22 @@ function resetTooltip(layer) {
   return content;
 }
 
-function resetHeadings(layer) {
+function resetHeadings (layer) {
   let headings = layer.editing.headings || [];
   let svg = map._renderer._container;
-  headings.forEach(function(heading) {
+  headings.forEach(function (heading) {
     svg.removeChild(heading);
   });
   headings = [];
   let latlngs = layer.getLatLngs();
-  latlngs.forEach(function(point, idx){
-    if(idx===latlngs.length - 1) {
+  latlngs.forEach(function (point, idx) {
+    if (idx === latlngs.length - 1) {
       return;
     }
 
-    let next = latlngs[idx+1];
+    let next = latlngs[ idx + 1 ];
     let currPnt = map.latLngToLayerPoint(point), nextPnt = map.latLngToLayerPoint(next);
-    if( currPnt.distanceTo(nextPnt) < 120 ) {
+    if (currPnt.distanceTo(nextPnt) < 120) {
       // points to close one to each other with current zoom, skip to next iteration
       return;
     }
@@ -800,11 +865,11 @@ function resetHeadings(layer) {
 
     let distance = point.distanceTo(next);
     let bearing = L.GeometryUtil.bearing(point, next);
-    if(bearing<0) {
+    if (bearing < 0) {
       bearing += 360;
     }
     let angle = L.GeometryUtil.angle(map, headingLoc, headingLocAngleAnchor) - 90;
-    let text = (""+Math.round(bearing)).padStart(3,'0') + "° "+_round(distance * 0.539957 / 1000, 2) +"NM";
+    let text = ("" + Math.round(bearing)).padStart(3, '0') + "° " + _round(distance * 0.539957 / 1000, 2) + "NM";
 
     let textNode = L.SVG.create('text'),
       rect = L.SVG.create('rect'),
@@ -823,8 +888,8 @@ function resetHeadings(layer) {
     rect.setAttribute("ry", "8");
     rect.setAttribute("y", "-8");
 
-    if(angle>90) {
-      angle-=180;
+    if (angle > 90) {
+      angle -= 180;
       textNode.setAttribute('x', '-93');
       rect.setAttribute("x", "-98");
     } else {
@@ -835,49 +900,49 @@ function resetHeadings(layer) {
     g.appendChild(rect);
     g.appendChild(textNode);
     headingLoc = map.latLngToLayerPoint(headingLoc);
-    g.setAttribute('transform', 'translate('+headingLoc.x+' '+headingLoc.y+') rotate('+angle+')');
+    g.setAttribute('transform', 'translate(' + headingLoc.x + ' ' + headingLoc.y + ') rotate(' + angle + ')');
     svg.appendChild(g);
     headings.push(g);
   });
   layer.editing.headings = headings;
 }
 
-function resetWaypointLabels(layer) {
+function resetWaypointLabels (layer) {
   let waypointLabels = layer.editing.waypointLabels || [];
   let svg = map._renderer._container;
-  waypointLabels.forEach(function(label) {
+  waypointLabels.forEach(function (label) {
     svg.removeChild(label);
   });
   waypointLabels = [];
   let latlngs = layer.getLatLngs();
 
-  function coordLabelNode(node, coord) {
+  function coordLabelNode (node, coord) {
     node.appendChild(document.createTextNode(coord.padStart(7, '0')));
     node.setAttribute('font-size', '10px');
     node.setAttribute('x', '2');
     return node;
   }
 
-  latlngs.forEach(function(point, idx){
+  latlngs.forEach(function (point, idx) {
     let currPnt = map.latLngToLayerPoint(point);
     currPnt.y -= 36;
 
     // rotate point where label will be placed in order to place it "outside" of the route turns
-    if( idx < latlngs.length - 1 ) {
-      let next = latlngs[idx+1];
+    if (idx < latlngs.length - 1) {
+      let next = latlngs[ idx + 1 ];
       let nb = L.GeometryUtil.bearing(point, next);
-      if( nb < 0) {
+      if (nb < 0) {
         nb += 360;
       }
-      if( idx > 0 ) {
-        let pb = L.GeometryUtil.bearing(point, latlngs[idx-1]);
-        if( pb < 0) {
+      if (idx > 0) {
+        let pb = L.GeometryUtil.bearing(point, latlngs[ idx - 1 ]);
+        if (pb < 0) {
           pb += 360;
         }
         let bearing;
         let bd = nb - pb;
-        if( bd < 0 ) {
-          bearing = bd >- 180 ? nb - (360 + bd) / 2 : nb - bd / 2;
+        if (bd < 0) {
+          bearing = bd > -180 ? nb - (360 + bd) / 2 : nb - bd / 2;
         } else {
           bearing = bd > 180 ? pb + bd / 2 : pb - (360 - bd) / 2;
         }
@@ -889,8 +954,8 @@ function resetWaypointLabels(layer) {
       }
     } else {
       // route end
-      let _pb = L.GeometryUtil.bearing(point, latlngs[idx-1]);
-      if( _pb < 0) {
+      let _pb = L.GeometryUtil.bearing(point, latlngs[ idx - 1 ]);
+      if (_pb < 0) {
         _pb += 360;
       }
       currPnt = map.latLngToLayerPoint(L.GeometryUtil.rotatePoint(map, map.layerPointToLatLng(currPnt), _pb - 180, point));
@@ -906,9 +971,9 @@ function resetWaypointLabels(layer) {
     coordLabelNode(latNode, latLabel(_round(point.lat, 2), 2)).setAttribute('y', '11');
     coordLabelNode(lngNode, lngLabel(_round(point.lng, 2), 2)).setAttribute('y', '22');
 
-    flNode.appendChild(document.createTextNode((''+Math.round(point.alt)).padStart(3, '0')));
-    flNode.setAttribute('writing-mode','tb');
-    flNode.setAttribute('glyph-orientation-vertical','90');
+    flNode.appendChild(document.createTextNode(('' + Math.round(point.alt)).padStart(3, '0')));
+    flNode.setAttribute('writing-mode', 'tb');
+    flNode.setAttribute('glyph-orientation-vertical', '90');
     flNode.setAttribute('font-size', '10px');
     flNode.setAttribute('font-weight', 'bold');
     flNode.setAttribute('letter-spacing', '1');
@@ -932,17 +997,16 @@ function resetWaypointLabels(layer) {
     rect.setAttribute("x", "0");
     rect.setAttribute("y", "0");
 
-
     g.appendChild(rect);
     g.appendChild(textNode);
-    g.setAttribute('transform', 'translate('+(currPnt.x-27)+' '+(currPnt.y-13)+')');
+    g.setAttribute('transform', 'translate(' + (currPnt.x - 27) + ' ' + (currPnt.y - 13) + ')');
     svg.appendChild(g);
     waypointLabels.push(g);
   });
   layer.editing.waypointLabels = waypointLabels;
 }
 
-function modifyPolyToRoute(layer) {
+function modifyPolyToRoute (layer) {
   profile.fire('path:created', layer);
   resetTooltip(layer);
   layer.editing.enable();
@@ -973,14 +1037,14 @@ function modifyPolyToRoute(layer) {
   return layer;
 }
 
-function addRouteCorridor(route) {
+function addRouteCorridor (route) {
   buffer(route.getLatLngs(), corridorWidthControl.noUiSlider.get(), corridorWidthControl.noUiSlider.units, function (corridorGeoms) {
     let corridorMapObjects = [];
-    corridorGeoms.forEach(function(geom){
+    corridorGeoms.forEach(function (geom) {
       corridorMapObjects.push(geom.addTo(map));
     });
     route.editing.corridor = corridorMapObjects;
-    corridorWidthControl.noUiSlider.on('set', function() {
+    corridorWidthControl.noUiSlider.on('set', function () {
       resetBuffer(route);
     });
   });
@@ -989,7 +1053,7 @@ function addRouteCorridor(route) {
 resetBuffer = debounce(function (route) {
   let radius = corridorWidthControl.noUiSlider.get();
   let units = corridorWidthControl.noUiSlider.units;
-  if( radius < 1 ) {
+  if (radius < 1) {
     route.editing.corridor.forEach(function (geom) {
       map.removeLayer(geom);
     });
@@ -1019,11 +1083,11 @@ resetElevation = debounce(function (route, profile) {
 }, 2000);
 
 // Object created - bind popup to layer, add to feature group
-map.on(L.Draw.Event.CREATED, function(event) {
+map.on(L.Draw.Event.CREATED, function (event) {
   modifyPolyToRoute(event.layer);
 });
 
-map.on('zoom resize viewreset profile:edited', function() {
+map.on('zoom resize viewreset profile:edited', function () {
   drawnItems.eachLayer(function (layer) {
     if (layer instanceof L.Polyline) {
       resetHeadings(layer);
@@ -1036,11 +1100,11 @@ map.on('zoom resize viewreset profile:edited', function() {
 // be triggered. The function will be called after it stops being called for
 // N milliseconds. If `immediate` is passed, trigger the function on the
 // leading edge, instead of the trailing.
-function debounce(func, wait, immediate) {
+function debounce (func, wait, immediate) {
   let timeout;
-  return function() {
+  return function () {
     let context = this, args = arguments;
-    let later = function() {
+    let later = function () {
       timeout = null;
       if (!immediate) func.apply(context, args);
     };
@@ -1051,11 +1115,11 @@ function debounce(func, wait, immediate) {
   };
 }
 
-function _formatParams( params ){
+function _formatParams (params) {
   return "?" + Object
     .keys(params)
-    .map(function(key){
-      return key+"="+encodeURIComponent(params[key])
+    .map(function (key) {
+      return key + "=" + encodeURIComponent(params[ key ])
     })
     .join("&")
 }
