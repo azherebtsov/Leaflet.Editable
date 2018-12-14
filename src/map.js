@@ -147,6 +147,10 @@ let airports = L.esri.Cluster.featureLayer({
         xhr.setRequestHeader('Accept', '*/*');
         xhr.onload = function () {
           var responseText = xhr.responseText
+          if (responseText === undefined || responseText.length == 0) {
+            airport.METAR = "Data not available";
+            airport.getTooltip().setContent(getAirportLabelContent(airportPoint, airport));
+          }
           try{
             var metarJSON = x2js.xml2json(x2js.parseXmlString(responseText))
             var popupContent = "Data not available";
@@ -173,9 +177,8 @@ let airports = L.esri.Cluster.featureLayer({
         xhr2.onload = function () {
 
           var responseText = xhr2.responseText
-          if(responseText === undefined) {
+          if (responseText === undefined || responseText.length == 0) {
             airport.TAF = "Data not available";
-
             airport.getTooltip().setContent(getAirportLabelContent(airportPoint, airport));
             return;
           }
@@ -211,7 +214,7 @@ let airports = L.esri.Cluster.featureLayer({
 
                     var skyConditionElement = sky_condition[ j ]
                     if (skyConditionElement[ '_sky_cover' ]) {
-                      popupContent += " Sky: <span style='color:black'>" + skyConditionElement[ "_sky_cover" ] + "</span> "
+                      popupContent += " Sky: <span style='color:darkblue'>" + skyConditionElement[ "_sky_cover" ] + "</span> "
                     }
                     var cloudBase = skyConditionElement[ "_cloud_base_ft_agl" ]
                     if (cloudBase) {
@@ -220,7 +223,7 @@ let airports = L.esri.Cluster.featureLayer({
                       } else if (cloudBase > 1000) {
                         popupContent += " base: <span style='color:orange'>" + cloudBase + " ft</span> "
                       } else {
-                        popupContent += " base: <span style='color:green'>" + cloudBase + " ft</span> "
+                        popupContent += " base: <span style='color:red'>" + cloudBase + " ft</span> "
                       }
 
                     }
