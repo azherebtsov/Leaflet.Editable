@@ -105,7 +105,6 @@ function getAirportLabelContent (airportPoint, airportMarker) {
   }
 
   return label;
-
 }
 
 // Airports
@@ -159,8 +158,6 @@ let airports = L.esri.Cluster.featureLayer({
           } finally {
             airport.getTooltip().setContent(getAirportLabelContent(airportPoint, airport));
           }
-
-
         };
 
         xhr.onerror = function () {
@@ -243,8 +240,6 @@ let airports = L.esri.Cluster.featureLayer({
           } finally {
             airport.getTooltip().setContent(getAirportLabelContent(airportPoint, airport));
           }
-
-
         };
 
         xhr2.onerror = function () {
@@ -260,6 +255,24 @@ let airports = L.esri.Cluster.featureLayer({
 });
 airports.addTo(map);
 
+let airportIcons = L.esri.Cluster.featureLayer({
+  showCoverageOnHover: false,
+  url: "https://services1.arcgis.com/vHnIGBHHqDR6y0CR/arcgis/rest/services/World_Airport_Locations/FeatureServer/0",
+  pointToLayer: function (airportPoint, latlng) {
+    let airportIcon = L.circleMarker(latlng,
+      {
+        radius: 2,
+        fillColor: "#ca7049",
+        fillOpacity: 0.4,
+        color: "#000",
+        weight: 1,
+      }
+    );
+    return airportIcon;
+  }
+});
+
+airportIcons.addTo(map);
 /**
  * Handling dep and arr URL parameters. Could be better - two codes could be handled by one request
  */
@@ -292,9 +305,110 @@ window.onload = function () {
   addSIGMETLayer('https://www.aviationweather.gov/cgi-bin/json/SigmetJSON.php?type=all', 'SIGMETs US');
   // CWA
   addSIGMETLayer('https://www.aviationweather.gov/cgi-bin/json/CwaJSON.php', 'SIGMETs CWA');
+
+  // add 'Paste' listener
+  document.onpaste = function (evt) {
+    let items = evt.clipboardData.items;
+    for(var i=0;i<items.length;i++) {
+      var item = items[i];
+      if( item.type === 'text/plain' ) {
+        item.getAsString(function (data) {
+          parseATCFPL(data);
+        });
+      }
+    }
+  }
 };
 
-function addSIGMETLayer (url, label) {
+function parseATCFPL(text) {
+  let stationPattern = /\-([A-Z]{4})\d{4}[\s\S^]/g;
+  var matcher = stationPattern.exec(text);
+  let depStationIdx = matcher.index;
+  if( depStationIdx >=0 ) {
+    let depStation = matcher[1];
+    let routeStartIdx = stationPattern.lastIndex+1;
+    matcher = stationPattern.exec(text);
+    let arrStationIdx = matcher.index;
+    if( arrStationIdx >=0 ) {
+      let arrStation = matcher[1];
+      var route = text.substr(routeStartIdx, arrStationIdx - routeStartIdx);
+      route = route.replace(/[\s\S^](DCT|IFR|VFR)[\s\S^]/gi, ' '); // remove flight modes and 'DCT'
+      let routeItems = route.split(/[ ^]/g);
+      let cruising = routeItems.shift();
+      let transitionPattern = /([A-Z\d]+)\/([A-Z\d]+)/;
+      let flPattern = /F(\d{3})/;
+      var cruisingLevel = parseInt(flPattern.exec(cruising)[1], 10);
+      let routeItemsNoTransiotion = [];
+      let transitionMap = new Map();
+      routeItems.forEach(function(item){
+        if( item.length > 0 ) {
+          if (transitionPattern.test(item)) {
+            let name = transitionPattern.exec(item)[1];
+            routeItemsNoTransiotion.push(name);
+            transitionMap.set(name, transitionPattern.exec(item)[2]);
+          } else {
+            routeItemsNoTransiotion.push(item);
+          }
+        }
+      });
+      let routeString = depStation + ' ' + routeItemsNoTransiotion.join(' ') + ' ' + arrStation;
+      decodeRoute(routeString, function (json) {
+        let decodedRoute = json;
+        downloadRoute(decodedRoute.id, function(djson) {
+          let droute = djson.route;
+          if( droute !== undefined ) {
+            let points=[];
+            droute.nodes.forEach(function(point, idx){
+              let latlng = new L.LatLng(point.lat, point.lon);
+              points.push(latlng);
+              let transition = transitionMap.get(point.ident);
+              if( transition !== undefined ) {
+                let level = flPattern.exec(transition)[1];
+                if (level !== undefined) {
+                  cruisingLevel = parseInt(level, 10);
+                }
+              }
+              latlng.alt = idx > 0 && idx < droute.nodes.length - 1 ? cruisingLevel : 0;
+              latlng.ident = point.ident;
+              if( point.via !== null && point.via !== undefined) {
+                latlng.airway = point.via.ident;
+              }
+            });
+            let routeLine = new L.Polyline(points, routeDefaultOptions);
+            modifyPolyToRoute(routeLine).addTo(map);
+            map.fitBounds(points);
+          }
+        });
+      });
+    }
+  }
+}
+
+function decodeRoute(routeString, callback) {
+  var req = new XMLHttpRequest();
+  req.onload = function () {
+    let json = JSON.parse(req.responseText);
+    callback(json);
+  };
+  req.open('POST', 'https://thingproxy.freeboard.io/fetch/https://api.flightplandatabase.com/auto/decode', true); // through CORS proxy with limited traffic
+  req.setRequestHeader('Accept', '*');
+  req.setRequestHeader('Content-Type', 'application/json');
+  req.setRequestHeader('Authorization', 'Basic 73HM02I7ZdwXOy9xld8bYBLkilnyff6cjZpQjX2o');
+  req.send(JSON.stringify({route : routeString}));
+}
+
+function downloadRoute(routeId, callback) {
+  var req = new XMLHttpRequest();
+  req.onload = function () {
+    let json = JSON.parse(req.responseText);
+    callback(json);
+  };
+  req.open('GET', 'https://cors.io/?https://api.flightplandatabase.com/plan/'+routeId, true); // through CORS proxy with limited traffic
+  req.setRequestHeader('Accept', 'application/json');
+  req.send();
+}
+
+function addSIGMETLayer(url, label) {
   var req = new XMLHttpRequest();
   req.onload = function () {
     let json = JSON.parse(req.responseText);
@@ -416,7 +530,8 @@ ${p.rawAirSigmet}
   req.send();
 };
 
-var buffer = function (poly, radius, units, onSuccess) {};
+var buffer = function (poly, radius, units, onSuccess){};
+var elevation = function (poly, onSuccess){};
 
 require([
   "esri/geometry/webMercatorUtils",
@@ -425,36 +540,38 @@ require([
   webMercatorUtils
 ) {
 
-  function bufferImpl (latlngs, radius = 250, units = 9093, onSuccess) {
-    //Pull first layer from the webmap and use it as input for the buffer operation
-    //Use GeometryEngine geodesicBuffer
-    //buffers will have correct distance no matter what the spatial reference of the map is.
-
-    if (radius < 1) {
-      onSuccess([]);
-    }
-
-    let ring = [], points = [];
+  function toEsriPath(latlngs, segmentGranularity = 10) {
+    let ring = [], points = [], step = 1 / segmentGranularity;
     latlngs.forEach(function (point, idx) {
-      ring.push([ point.lat, point.lng ]);
+      ring.push([point.lat, point.lng]);
       if (idx < latlngs.length - 1) {
-        let next = latlngs[ idx + 1 ], ip;
-        for (let i = 0; i < 1; i += 0.1) {
+        let next = latlngs[idx + 1], ip;
+        for (let i = step; i < 1; i += step) {
           ip = point.intermediatePointTo(next, i);
-          let p = [ ip.lat, ip.lng ];
-          let m = webMercatorUtils.lngLatToXY(ip.lng, ip.lat);
+          let p = [ip.lat, ip.lng];
           ring.push(p);
-          points.push(//{
-            [ m[ 0 ], m[ 1 ] ]
-          );
         }
       }
     });
 
-    let polylineJson = {
-      "paths": [ points ],
-      "spatialReference": { "wkid": CRS_WEB_MERCATOR }
+    ring.forEach(function (ip) {
+      let m = webMercatorUtils.lngLatToXY(ip[1], ip[0]);
+      points.push(//{
+        [m[0], m[1]]
+      );
+    });
+    return {
+      "paths": [points],
+      "spatialReference": {"wkid": CRS_WEB_MERCATOR}
     };
+  }
+
+  function bufferImpl(latlngs, radius = 250, units = 9093, onSuccess){
+    if(radius < 1) {
+      onSuccess([]);
+    }
+
+    let polylineJson = toEsriPath(latlngs);
 
     let xhr = new XMLHttpRequest();
     let requestURL = 'https://utility.arcgisonline.com/ArcGIS/rest/services/Geometry/GeometryServer/buffer';
@@ -512,7 +629,73 @@ require([
     xhr.send();
   }
 
+  function elevationImpl(latlngs, onSuccess){
+    let polylineJson = toEsriPath(latlngs, 4);
+
+    let xhr = new XMLHttpRequest();
+    let requestURL = 'https://elevation.arcgis.com/arcgis/rest/services/Tools/ElevationSync/GPServer/Profile/execute';
+    let params = {
+      f: 'json',
+      'env:outSR': CRS_WEB_MERCATOR,
+      'InputLineFeatures': JSON.stringify({
+        "fields":[{"name":"OID","type":"esriFieldTypeObjectID","alias":"OID"}],
+        "geometryType":"esriGeometryPolyline",
+        "features":[{"geometry":polylineJson,"attributes":{"OID":1}}],
+        "sr":{"wkid":CRS_WEB_MERCATOR,"latestWkid":3857}
+        }),
+      ProfileIDField: 'OID',
+      DEMResolution: 'FINEST',
+      MaximumSampleDistance: 10000,
+      MaximumSampleDistanceUnits: 'Meters',
+      returnZ: true,
+      returnM: true
+    };
+
+    xhr.open('GET', requestURL + this._formatParams(params), true );
+    // Specify the http content-type as json
+    xhr.setRequestHeader('Accept', '*/*');
+
+    // Response handlers
+    let elevation = [];
+    xhr.onload = function() {
+      let responseText = xhr.responseText;
+      let response = JSON.parse(responseText);
+
+      response.results[0].value.features.forEach(function (feature) {
+        let geometry = feature.geometry;
+        let points=[];
+        let paths = geometry.paths;
+        paths.forEach(function(ring){
+          let _points = [];
+          ring.forEach(function (point) {
+            let m = webMercatorUtils.xyToLngLat(point[0], point[1]);
+            _points.push([m[1], m[0], point[2], point[3]]);
+          });
+          points.push(_points);
+        });
+
+        elevation.push(/*new L.polygon(points,
+          {
+            stroke: true,
+            color: color,
+            weight: 2,
+            opacity: 0.9,
+            fill: false,
+            clickable: false
+          })*/ points);
+      });
+
+      onSuccess(elevation[0][0]);
+    };
+
+    xhr.onerror = function() {
+      console.log('There was an error!');
+    };
+    xhr.send();
+  }
+
   window.buffer = bufferImpl;
+  window.elevation = elevationImpl;
 });
 
 // Weather layers
@@ -828,10 +1011,14 @@ function modifyPolyToRoute (layer) {
   resetTooltip(layer);
   layer.editing.enable();
   addRouteCorridor(layer);
+  elevation(layer.getLatLngs(), function(_elevation) {
+    profile.fire('elevation:calculated', {'elevation':_elevation, layer:layer});
+  });
   layer.on('edit', function () {
     resetTooltip(layer);
     profile.fire('path:edited', layer);
     resetBuffer(layer);
+    resetElevation(layer, profile);
   });
   layer.on('editdrag', function () {
     resetHeadings(layer);
@@ -888,6 +1075,12 @@ resetBuffer = debounce(function (route) {
     }
   }
 }, 100);
+
+resetElevation = debounce(function (route, profile) {
+  elevation(route.getLatLngs(), function(_elevation) {
+    profile.fire('elevation:calculated', {'elevation':_elevation, layer:route});
+  });
+}, 2000);
 
 // Object created - bind popup to layer, add to feature group
 map.on(L.Draw.Event.CREATED, function (event) {
