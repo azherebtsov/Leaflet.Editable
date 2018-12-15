@@ -307,9 +307,16 @@ window.onload = function () {
 };
 
 function parseATCFPL(text) {
+  var cruisingLevel = 360;
+  let routeItemsNoTransition = [];
+  let transitionMap = new Map();
+  var routeString = text;
+
   let stationPattern = /\-([A-Z]{4})\d{4}[\s\S^]/g;
+  let flPattern = /F(\d{3})/;
+
   var matcher = stationPattern.exec(text);
-  let depStationIdx = matcher.index;
+  let depStationIdx = matcher !== null ? matcher.index : -1;
   if( depStationIdx >=0 ) {
     let depStation = matcher[1];
     let routeStartIdx = stationPattern.lastIndex+1;
@@ -322,52 +329,54 @@ function parseATCFPL(text) {
       let routeItems = route.split(/[ ^]/g);
       let cruising = routeItems.shift();
       let transitionPattern = /([A-Z\d]+)\/([A-Z\d]+)/;
-      let flPattern = /F(\d{3})/;
-      var cruisingLevel = parseInt(flPattern.exec(cruising)[1], 10);
-      let routeItemsNoTransiotion = [];
-      let transitionMap = new Map();
+      cruisingLevel = parseInt(flPattern.exec(cruising)[1], 10);
+      routeItemsNoTransition = [];
+      transitionMap = new Map();
       routeItems.forEach(function(item){
         if( item.length > 0 ) {
           if (transitionPattern.test(item)) {
             let name = transitionPattern.exec(item)[1];
-            routeItemsNoTransiotion.push(name);
+            routeItemsNoTransition.push(name);
             transitionMap.set(name, transitionPattern.exec(item)[2]);
           } else {
-            routeItemsNoTransiotion.push(item);
+            routeItemsNoTransition.push(item);
           }
         }
       });
-      let routeString = depStation + ' ' + routeItemsNoTransiotion.join(' ') + ' ' + arrStation;
-      decodeRoute(routeString, function (json) {
-        let decodedRoute = json;
-        downloadRoute(decodedRoute.id, function(djson) {
-          let droute = djson.route;
-          if( droute !== undefined ) {
-            let points=[];
-            droute.nodes.forEach(function(point, idx){
-              let latlng = new L.LatLng(point.lat, point.lon);
-              points.push(latlng);
-              let transition = transitionMap.get(point.ident);
-              if( transition !== undefined ) {
-                let level = flPattern.exec(transition)[1];
-                if (level !== undefined) {
-                  cruisingLevel = parseInt(level, 10);
-                }
-              }
-              latlng.alt = idx > 0 && idx < droute.nodes.length - 1 ? cruisingLevel : 0;
-              latlng.ident = point.ident;
-              if( point.via !== null && point.via !== undefined) {
-                latlng.airway = point.via.ident;
-              }
-            });
-            let routeLine = new L.Polyline(points, routeDefaultOptions);
-            modifyPolyToRoute(routeLine).addTo(map);
-            map.fitBounds(points);
+      routeString = depStation + ' ' + routeItemsNoTransition.join(' ') + ' ' + arrStation;
+    }
+  } else {
+    routeString = routeString.replace(/\.+/g, ' '); // replace dots with spaces
+  }
+
+  decodeRoute(routeString, function (json) {
+    let decodedRoute = json;
+    downloadRoute(decodedRoute.id, function(djson) {
+      let droute = djson.route;
+      if( droute !== undefined ) {
+        let points=[];
+        droute.nodes.forEach(function(point, idx){
+          let latlng = new L.LatLng(point.lat, point.lon);
+          points.push(latlng);
+          let transition = transitionMap.get(point.ident);
+          if( transition !== undefined ) {
+            let level = flPattern.exec(transition)[1];
+            if (level !== undefined) {
+              cruisingLevel = parseInt(level, 10);
+            }
+          }
+          latlng.alt = idx > 0 && idx < droute.nodes.length - 1 ? cruisingLevel : 0;
+          latlng.ident = point.ident;
+          if( point.via !== null && point.via !== undefined) {
+            latlng.airway = point.via.ident;
           }
         });
-      });
-    }
-  }
+        let routeLine = new L.Polyline(points, routeDefaultOptions);
+        modifyPolyToRoute(routeLine).addTo(map);
+        map.fitBounds(points);
+      }
+    });
+  });
 }
 
 function decodeRoute(routeString, callback) {
