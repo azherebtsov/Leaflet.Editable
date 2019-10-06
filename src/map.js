@@ -140,7 +140,7 @@ let airports = L.esri.Cluster.featureLayer({
     airport.on('mouseover', function () {
       {
         let xhr = new XMLHttpRequest();
-        let requestURL = 'https://cors.io/?https://www.aviationweather.gov/adds/dataserver_current/httpparam?dataSource=metars&requestType=retrieve&format=xml&hoursBeforeNow=3&mostRecent=true&stationString=';
+        let requestURL = 'https://cors.azherebtsov.workers.dev/?https://www.aviationweather.gov/adds/dataserver_current/httpparam?dataSource=metars&requestType=retrieve&format=xml&hoursBeforeNow=3&mostRecent=true&stationString=';
         xhr.open('GET', requestURL + airportPoint.properties[ "ICAO" ], true);
         xhr.setRequestHeader('Accept', '*/*');
         xhr.onload = function () {
@@ -169,7 +169,7 @@ let airports = L.esri.Cluster.featureLayer({
       }
       {
         xhr2 = new XMLHttpRequest();
-        let requestURLTAF = 'https://cors.io/?https://www.aviationweather.gov/adds/dataserver_current/httpparam?dataSource=tafs&requestType=retrieve&format=xml&hoursBeforeNow=3&timeType=issue&mostRecent=true&stationString=';
+        let requestURLTAF = 'https://cors.azherebtsov.workers.dev/?https://www.aviationweather.gov/adds/dataserver_current/httpparam?dataSource=tafs&requestType=retrieve&format=xml&hoursBeforeNow=3&timeType=issue&mostRecent=true&stationString=';
         xhr2.open('GET', requestURLTAF + airportPoint.properties[ "ICAO" ], true);
         xhr2.setRequestHeader('Accept', '*/*');
         xhr2.onload = function () {
@@ -385,7 +385,7 @@ function decodeRoute(routeString, callback) {
     let json = JSON.parse(req.responseText);
     callback(json);
   };
-  req.open('POST', 'https://cors-anywhere.herokuapp.com/https://api.flightplandatabase.com/auto/decode', true); // through CORS proxy with limited traffic
+  req.open('POST', 'https://cors.azherebtsov.workers.dev/?https://api.flightplandatabase.com/auto/decode', true); // through CORS proxy with limited traffic
   req.setRequestHeader('Accept', '*');
   req.setRequestHeader('Content-Type', 'application/json');
   req.setRequestHeader('Authorization', 'Basic 73HM02I7ZdwXOy9xld8bYBLkilnyff6cjZpQjX2o');
@@ -398,7 +398,7 @@ function downloadRoute(routeId, callback) {
     let json = JSON.parse(req.responseText);
     callback(json);
   };
-  req.open('GET', 'https://cors.io/?https://api.flightplandatabase.com/plan/'+routeId, true); // through CORS proxy with limited traffic
+  req.open('GET', 'https://cors.azherebtsov.workers.dev/?https://api.flightplandatabase.com/plan/'+routeId, true); // through CORS proxy with limited traffic
   req.setRequestHeader('Accept', 'application/json');
   req.send();
 }
@@ -520,7 +520,7 @@ ${p.rawAirSigmet}
 
     layersControl.addOverlay(sigmetsLayer, label);
   };
-  req.open('GET', 'https://cors.io/?' + url, true); // through CORS proxy with limited traffic
+  req.open('GET', 'https://cors.azherebtsov.workers.dev/?' + url, true); // through CORS proxy with limited traffic
   req.setRequestHeader('Accept', '*/*');
   req.send();
 };
