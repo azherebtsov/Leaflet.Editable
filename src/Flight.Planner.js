@@ -85,14 +85,14 @@
             layer.fire('profile:edited', profile);
           });
 
-          profile.snapediting = new L.Handler.PolylineSnap(this, profile, {
+          /*profile.snapediting = new L.Handler.PolylineSnap(this, profile, {
             snapDistance: 15, // in pixels
             snapVertices: true
           });
-          profile.snapediting.addGuideLayer(levelBaselines);
+          profile.snapediting.addGuideLayer(levelBaselines);*/
           profile.editing.newVertexEnabled = false;
           profile.editing.deleteVertexEnabled = false;
-          profile.snapediting.enable();
+          //profile.snapediting.enable();
 
           profile.ratio = ratio;
 
@@ -112,9 +112,9 @@
             }
             _wpts[idx].lng = x;
           });
-          _profile.snapediting.disable();
+          //_profile.snapediting.disable();
           _profile.redraw();
-          _profile.snapediting.enable();
+          //_profile.snapediting.enable();
         }
       }
     },
