@@ -89,7 +89,7 @@
             snapDistance: 15, // in pixels
             snapVertices: true
           });
-          profile.snapediting.addGuideLayer(levelBaselines);*/
+          profile.snapediting.addGuideLayer(levelBaselines);
           profile.editing.newVertexEnabled = false;
           profile.editing.deleteVertexEnabled = false;
           profile.snapediting.enable();
